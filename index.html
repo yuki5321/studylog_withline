@@ -36,16 +36,42 @@
         let selectedSubject = '英語';
         let displayName = "Unknown";
 
-        // LIFF初期化
         async function initLiff() {
-            await liff.init({ liffId: "https://liff.line.me/2009056355-TruGatly" }); // 後で発行されるIDを入れる
-                    if (!liff.isLoggedIn()) {
-                liff.login();
-            } else {
-                const profile = await liff.getProfile(); // ここで名前を取りに行く
-                displayName = profile.displayName; 
-                document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
-                console.log("取得した名前:", displayName); // PCのデバッグで見れます
+            try {
+                await liff.init({ liffId: "2009056355-TruGatly" }); 
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                } else {
+                    const profile = await liff.getProfile();
+                    displayName = profile.displayName; 
+                    document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
+                }
+            } catch (err) {
+                console.error('LIFF初期化エラー', err);
+                document.getElementById('user-name').innerText = "エラーが発生しました";
+            }
+        }
+
+        async function saveData(duration) {
+            const gasUrl = "https://script.google.com/macros/s/AKfycbx0lGxxv5qfnCe0zTuoqYSE-Pat2dY8Bne8O_1SQ1Neie6kVoTqHoBXBuorVg1ZakM/exec";
+            const data = {
+                userName: displayName,
+                subject: selectedSubject,
+                duration: duration
+            };
+            
+            try {
+                await fetch(gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                alert(`${selectedSubject}の学習を記録しました！`);
+                liff.closeWindow();
+            } catch (e) {
+                console.error(e);
+                alert("保存に失敗しました。");
             }
         }
 
@@ -60,14 +86,12 @@
         function toggleTimer() {
             const btn = document.getElementById('main-btn');
             if (!isRunning) {
-                // START
                 startTime = Date.now();
                 timerInterval = setInterval(updateTimer, 1000);
                 btn.innerText = 'STOP';
                 btn.classList.add('stop');
                 isRunning = true;
             } else {
-                // STOP
                 clearInterval(timerInterval);
                 const duration = Math.floor((Date.now() - startTime) / 1000);
                 saveData(duration);
@@ -88,26 +112,6 @@
             btn.innerText = 'START';
             btn.classList.remove('stop');
             isRunning = false;
-        }
-
-        async function saveData(duration) {
-            const gasUrl = "https://script.google.com/macros/s/AKfycbx0lGxxv5qfnCe0zTuoqYSE-Pat2dY8Bne8O_1SQ1Neie6kVoTqHoBXBuorVg1ZakM/exec"; // 後でGASのWebアプリURLを入れる
-            const data = {
-                userName: displayName,
-                subject: selectedSubject,
-                duration: duration
-            };
-            
-            try {
-                await fetch(gasUrl, {
-                    method: 'POST',
-                    body: JSON.stringify(data)
-                });
-                alert(`${selectedSubject}の学習を記録しました！`);
-                liff.closeWindow();
-            } catch (e) {
-                console.error(e);
-            }
         }
 
         initLiff();
