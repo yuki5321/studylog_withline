@@ -104,33 +104,30 @@
 
         async function finishWithScore(emoji, score) {
             const minutes = Math.ceil(finalDuration / 60);
-            const data = {
-                userName: displayName,
-                subject: selectedSubject,
-                duration: finalDuration,
-                score: score
-            };
+            const data = { userName: displayName, subject: selectedSubject, duration: finalDuration, score: score };
 
             try {
-                // 1. GASに保存
-                await fetch(GAS_URL, {
+                // GASにデータを送り、レスポンス（AIメッセージ）を待つ
+                const response = await fetch(GAS_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
                     body: JSON.stringify(data)
                 });
+                
+                // mode: 'no-cors' を外してレスポンスを受け取れるようにします
+                // ※もしエラーが出るようなら、ここは一旦「AIが考え中...」などの固定文字でもOK
+                const result = await response.json(); 
+                const aiResponse = result.aiMsg || "明日も一緒に頑張ろうね！";
 
-                // 2. LINEトークにメッセージ送信
                 if (liff.isInClient()) {
                     await liff.sendMessages([{
                         'type': 'text',
-                        'text': `${emoji}【学習完了】\n${selectedSubject}を${minutes}分頑張りました！`
+                        'text': `${emoji}【記録完了】\n${selectedSubject}：${minutes}分\n\nAIメンターより：\n${aiResponse}`
                     }]);
                 }
-                
                 liff.closeWindow();
             } catch (e) {
                 console.error(e);
-                alert("保存に失敗しました。");
+                liff.closeWindow(); // エラーでも閉じる
             }
         }
 
