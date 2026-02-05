@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>集中ログ MVP</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; }
+        .timer { font-size: 3rem; font-weight: bold; margin: 20px 0; color: #333; }
+        .subjects { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+        .subject-btn { padding: 15px; border: 2px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
+        .subject-btn.active { background: #00b900; color: white; border-color: #00b900; }
+        #main-btn { width: 100%; padding: 20px; font-size: 1.5rem; border: none; border-radius: 50px; color: white; background: #00b900; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #main-btn.stop { background: #ff4b4b; }
+    </style>
+</head>
+<body>
+    <h2>学習記録</h2>
+    <div id="user-name">読み込み中...</div>
+
+    <div class="timer" id="timer-display">00:00</div>
+
+    <div class="subjects" id="subject-selector">
+        <div class="subject-btn active" onclick="selectSubject('英語')">英語</div>
+        <div class="subject-btn" onclick="selectSubject('数学')">数学</div>
+        <div class="subject-btn" onclick="selectSubject('国語')">国語</div>
+        <div class="subject-btn" onclick="selectSubject('その他')">その他</div>
+    </div>
+
+    <button id="main-btn" onclick="toggleTimer()">START</button>
+
+    <script>
+        let startTime, timerInterval;
+        let isRunning = false;
+        let selectedSubject = '英語';
+        let displayName = "Unknown";
+
+        // LIFF初期化
+        async function initLiff() {
+            await liff.init({ liffId: "https://liff.line.me/2009056355-TruGatly" }); // 後で発行されるIDを入れる
+            if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                displayName = profile.displayName;
+                document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
+            } else {
+                liff.login();
+            }
+        }
+
+        function selectSubject(subject) {
+            if (isRunning) return;
+            selectedSubject = subject;
+            document.querySelectorAll('.subject-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.innerText === subject);
+            });
+        }
+
+        function toggleTimer() {
+            const btn = document.getElementById('main-btn');
+            if (!isRunning) {
+                // START
+                startTime = Date.now();
+                timerInterval = setInterval(updateTimer, 1000);
+                btn.innerText = 'STOP';
+                btn.classList.add('stop');
+                isRunning = true;
+            } else {
+                // STOP
+                clearInterval(timerInterval);
+                const duration = Math.floor((Date.now() - startTime) / 1000);
+                saveData(duration);
+                resetTimer();
+            }
+        }
+
+        function updateTimer() {
+            const diff = Math.floor((Date.now() - startTime) / 1000);
+            const mm = String(Math.floor(diff / 60)).padStart(2, '0');
+            const ss = String(diff % 60).padStart(2, '0');
+            document.getElementById('timer-display').innerText = `${mm}:${ss}`;
+        }
+
+        function resetTimer() {
+            document.getElementById('timer-display').innerText = '00:00';
+            const btn = document.getElementById('main-btn');
+            btn.innerText = 'START';
+            btn.classList.remove('stop');
+            isRunning = false;
+        }
+
+        async function saveData(duration) {
+            const gasUrl = "https://script.google.com/macros/s/AKfycbx0lGxxv5qfnCe0zTuoqYSE-Pat2dY8Bne8O_1SQ1Neie6kVoTqHoBXBuorVg1ZakM/exec"; // 後でGASのWebアプリURLを入れる
+            const data = {
+                userName: displayName,
+                subject: selectedSubject,
+                duration: duration
+            };
+            
+            try {
+                await fetch(gasUrl, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                alert(`${selectedSubject}の学習を記録しました！`);
+                liff.closeWindow();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        initLiff();
+    </script>
+</body>
+</html>
