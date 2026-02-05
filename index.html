@@ -39,12 +39,13 @@
         // LIFF初期化
         async function initLiff() {
             await liff.init({ liffId: "https://liff.line.me/2009056355-TruGatly" }); // 後で発行されるIDを入れる
-            if (liff.isLoggedIn()) {
-                const profile = await liff.getProfile();
-                displayName = profile.displayName;
-                document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
-            } else {
+                    if (!liff.isLoggedIn()) {
                 liff.login();
+            } else {
+                const profile = await liff.getProfile(); // ここで名前を取りに行く
+                displayName = profile.displayName; 
+                document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
+                console.log("取得した名前:", displayName); // PCのデバッグで見れます
             }
         }
 
