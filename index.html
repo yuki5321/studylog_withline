@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>集中ログ MVP</title>
+    <title>集中ログ - ゲーミフィケーション版</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; }
@@ -13,6 +13,7 @@
         .subject-btn.active { background: #00b900; color: white; border-color: #00b900; }
         #main-btn { width: 100%; padding: 20px; font-size: 1.5rem; border: none; border-radius: 50px; color: white; background: #00b900; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         #main-btn.stop { background: #ff4b4b; }
+        #feedback-area { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -21,11 +22,22 @@
 
     <div class="timer" id="timer-display">00:00</div>
 
-    <div class="subjects" id="subject-selector">
-        <div class="subject-btn active" onclick="selectSubject('英語')">英語</div>
-        <div class="subject-btn" onclick="selectSubject('数学')">数学</div>
-        <div class="subject-btn" onclick="selectSubject('国語')">国語</div>
-        <div class="subject-btn" onclick="selectSubject('その他')">その他</div>
+    <div id="subject-selector-ui">
+        <div class="subjects">
+            <div class="subject-btn active" onclick="selectSubject('英語')">英語</div>
+            <div class="subject-btn" onclick="selectSubject('数学')">数学</div>
+            <div class="subject-btn" onclick="withSelectSubject('国語')">国語</div>
+            <div class="subject-btn" onclick="selectSubject('その他')">その他</div>
+        </div>
+    </div>
+
+    <div id="feedback-area" style="display:none; margin-top:20px;">
+        <p>今の集中度は？</p>
+        <div class="subjects">
+            <div class="subject-btn" onclick="finishWithScore('🤩', 3)">🤩 完璧！</div>
+            <div class="subject-btn" onclick="finishWithScore('😐', 2)">😐 普通</div>
+            <div class="subject-btn" onclick="finishWithScore('😴', 1)">😴 眠かった</div>
+        </div>
     </div>
 
     <button id="main-btn" onclick="toggleTimer()">START</button>
@@ -35,6 +47,9 @@
         let isRunning = false;
         let selectedSubject = '英語';
         let displayName = "Unknown";
+        let finalDuration = 0;
+
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbx0lGxxv5qfnCe0zTuoqYSE-Pat2dY8Bne8O_1SQ1Neie6kVoTqHoBXBuorVg1ZakM/exec";
 
         async function initLiff() {
             try {
@@ -48,37 +63,13 @@
                 }
             } catch (err) {
                 console.error('LIFF初期化エラー', err);
-                document.getElementById('user-name').innerText = "エラーが発生しました";
-            }
-        }
-
-        async function saveData(duration) {
-            const gasUrl = "https://script.google.com/macros/s/AKfycbx0lGxxv5qfnCe0zTuoqYSE-Pat2dY8Bne8O_1SQ1Neie6kVoTqHoBXBuorVg1ZakM/exec";
-            const data = {
-                userName: displayName,
-                subject: selectedSubject,
-                duration: duration
-            };
-            
-            try {
-                await fetch(gasUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                alert(`${selectedSubject}の学習を記録しました！`);
-                liff.closeWindow();
-            } catch (e) {
-                console.error(e);
-                alert("保存に失敗しました。");
             }
         }
 
         function selectSubject(subject) {
             if (isRunning) return;
             selectedSubject = subject;
-            document.querySelectorAll('.subject-btn').forEach(btn => {
+            document.querySelectorAll('#subject-selector-ui .subject-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.innerText === subject);
             });
         }
@@ -86,16 +77,21 @@
         function toggleTimer() {
             const btn = document.getElementById('main-btn');
             if (!isRunning) {
+                // 学習開始
                 startTime = Date.now();
                 timerInterval = setInterval(updateTimer, 1000);
                 btn.innerText = 'STOP';
                 btn.classList.add('stop');
                 isRunning = true;
             } else {
+                // 学習停止
                 clearInterval(timerInterval);
-                const duration = Math.floor((Date.now() - startTime) / 1000);
-                saveData(duration);
-                resetTimer();
+                finalDuration = Math.floor((Date.now() - startTime) / 1000);
+                
+                // UIの切り替え
+                document.getElementById('main-btn').style.display = 'none';
+                document.getElementById('subject-selector-ui').style.display = 'none';
+                document.getElementById('feedback-area').style.display = 'block';
             }
         }
 
@@ -106,12 +102,36 @@
             document.getElementById('timer-display').innerText = `${mm}:${ss}`;
         }
 
-        function resetTimer() {
-            document.getElementById('timer-display').innerText = '00:00';
-            const btn = document.getElementById('main-btn');
-            btn.innerText = 'START';
-            btn.classList.remove('stop');
-            isRunning = false;
+        async function finishWithScore(emoji, score) {
+            const minutes = Math.ceil(finalDuration / 60);
+            const data = {
+                userName: displayName,
+                subject: selectedSubject,
+                duration: finalDuration,
+                score: score
+            };
+
+            try {
+                // 1. GASに保存
+                await fetch(GAS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(data)
+                });
+
+                // 2. LINEトークにメッセージ送信
+                if (liff.isInClient()) {
+                    await liff.sendMessages([{
+                        'type': 'text',
+                        'text': `${emoji}【学習完了】\n${selectedSubject}を${minutes}分頑張りました！`
+                    }]);
+                }
+                
+                liff.closeWindow();
+            } catch (e) {
+                console.error(e);
+                alert("保存に失敗しました。");
+            }
         }
 
         initLiff();
