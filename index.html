@@ -3,22 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>集中ログ - ゲーミフィケーション版</title>
+    <title>集中ログ - 履歴＆AIメンター版</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; }
-        .timer { font-size: 3rem; font-weight: bold; margin: 20px 0; color: #333; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; color: #333; }
+        h2 { margin-bottom: 5px; color: #00b900; }
+        #user-name { font-size: 0.9rem; margin-bottom: 20px; color: #666; }
+        
+        /* 履歴表示エリア */
+        #history-area { 
+            background: white; padding: 15px; border-radius: 15px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px;
+        }
+        #total-time { font-size: 1.8rem; font-weight: bold; color: #00b900; }
+        
+        .timer { font-size: 3.5rem; font-weight: bold; margin: 20px 0; font-family: monospace; }
+        
         .subjects { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-        .subject-btn { padding: 15px; border: 2px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
-        .subject-btn.active { background: #00b900; color: white; border-color: #00b900; }
-        #main-btn { width: 100%; padding: 20px; font-size: 1.5rem; border: none; border-radius: 50px; color: white; background: #00b900; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        #main-btn.stop { background: #ff4b4b; }
-        #feedback-area { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .subject-btn { padding: 15px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; transition: 0.2s; }
+        .subject-btn.active { background: #00b900; color: white; border-color: #00b900; font-weight: bold; }
+        
+        #main-btn { 
+            width: 100%; padding: 20px; font-size: 1.5rem; border: none; border-radius: 50px; 
+            color: white; background: #00b900; box-shadow: 0 4px 10px rgba(0,185,0,0.3);
+            font-weight: bold; cursor: pointer;
+        }
+        #main-btn.stop { background: #ff4b4b; box-shadow: 0 4px 10px rgba(255,75,75,0.3); }
+        
+        #feedback-area { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
     <h2>学習記録</h2>
     <div id="user-name">読み込み中...</div>
+
+    <div id="history-area">
+        <div style="font-size: 0.8rem;">これまでの合計学習時間</div>
+        <div><span id="total-time">--</span> <span style="font-size: 1rem;">分</span></div>
+    </div>
 
     <div class="timer" id="timer-display">00:00</div>
 
@@ -26,13 +48,13 @@
         <div class="subjects">
             <div class="subject-btn active" onclick="selectSubject('英語')">英語</div>
             <div class="subject-btn" onclick="selectSubject('数学')">数学</div>
-            <div class="subject-btn" onclick="withSelectSubject('国語')">国語</div>
+            <div class="subject-btn" onclick="selectSubject('国語')">国語</div>
             <div class="subject-btn" onclick="selectSubject('その他')">その他</div>
         </div>
     </div>
 
     <div id="feedback-area" style="display:none; margin-top:20px;">
-        <p>今の集中度は？</p>
+        <p style="font-weight: bold;">今の集中度は？</p>
         <div class="subjects">
             <div class="subject-btn" onclick="finishWithScore('🤩', 3)">🤩 完璧！</div>
             <div class="subject-btn" onclick="finishWithScore('😐', 2)">😐 普通</div>
@@ -60,9 +82,30 @@
                     const profile = await liff.getProfile();
                     displayName = profile.displayName; 
                     document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
+                    // 名前が取れたら履歴を取得
+                    loadHistory();
                 }
             } catch (err) {
                 console.error('LIFF初期化エラー', err);
+            }
+        }
+
+        // 履歴を取得する関数
+        async function loadHistory() {
+            try {
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: 'getHistory',
+                        userName: displayName
+                    })
+                });
+                const result = await response.json();
+                if (result.status === "success") {
+                    document.getElementById('total-time').innerText = result.totalMinutes;
+                }
+            } catch (e) {
+                console.error("履歴取得エラー", e);
             }
         }
 
@@ -77,18 +120,16 @@
         function toggleTimer() {
             const btn = document.getElementById('main-btn');
             if (!isRunning) {
-                // 学習開始
                 startTime = Date.now();
                 timerInterval = setInterval(updateTimer, 1000);
                 btn.innerText = 'STOP';
                 btn.classList.add('stop');
                 isRunning = true;
+                // 学習中は履歴を隠してタイマーに集中させる
+                document.getElementById('history-area').style.opacity = "0.3";
             } else {
-                // 学習停止
                 clearInterval(timerInterval);
                 finalDuration = Math.floor((Date.now() - startTime) / 1000);
-                
-                // UIの切り替え
                 document.getElementById('main-btn').style.display = 'none';
                 document.getElementById('subject-selector-ui').style.display = 'none';
                 document.getElementById('feedback-area').style.display = 'block';
@@ -104,19 +145,24 @@
 
         async function finishWithScore(emoji, score) {
             const minutes = Math.ceil(finalDuration / 60);
-            const data = { userName: displayName, subject: selectedSubject, duration: finalDuration, score: score };
+            const data = { 
+                userName: displayName, 
+                subject: selectedSubject, 
+                duration: finalDuration, 
+                score: score 
+            };
 
             try {
-                // GASにデータを送り、レスポンス（AIメッセージ）を待つ
+                // ボタンを連打できないように無効化
+                document.getElementById('feedback-area').style.pointerEvents = "none";
+                
                 const response = await fetch(GAS_URL, {
                     method: 'POST',
                     body: JSON.stringify(data)
                 });
                 
-                // mode: 'no-cors' を外してレスポンスを受け取れるようにします
-                // ※もしエラーが出るようなら、ここは一旦「AIが考え中...」などの固定文字でもOK
                 const result = await response.json(); 
-                const aiResponse = result.aiMsg || "明日も一緒に頑張ろうね！";
+                const aiResponse = result.aiMsg || "その調子！明日も応援してるよ！";
 
                 if (liff.isInClient()) {
                     await liff.sendMessages([{
@@ -127,7 +173,8 @@
                 liff.closeWindow();
             } catch (e) {
                 console.error(e);
-                liff.closeWindow(); // エラーでも閉じる
+                alert("保存中にエラーが発生しました。");
+                liff.closeWindow();
             }
         }
 
