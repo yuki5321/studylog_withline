@@ -3,26 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>集中ログ - 武内AI版</title>
+    <title>集中ログ - 武内AI & 目標点数表示版</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; color: #333; }
         h2 { margin-bottom: 5px; color: #00b900; }
         #user-name { font-size: 0.8rem; margin-bottom: 10px; color: #666; }
         #exam-countdown-area { display:none; background: #fff3cd; padding: 12px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ffeeba; }
-        #exam-title { font-size: 0.9rem; font-weight: bold; color: #856404; }
         #days-left { font-size: 1.8rem; color: #d9534f; font-weight: bold; }
         #exam-msg { font-size: 0.75rem; color: #666; margin-top: 5px; font-style: italic; }
         #history-area { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; }
         #total-time { font-size: 1.6rem; font-weight: bold; color: #00b900; }
         .timer { font-size: 3.5rem; font-weight: bold; margin: 15px 0; font-family: monospace; }
-        #goal-setting { margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 10px; border: 1px solid #eee; }
-        #goal-input { width: 60px; padding: 5px; font-size: 1.2rem; border-radius: 5px; border: 1px solid #ddd; text-align: center; }
+        
         .subjects { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
-        .subject-btn { padding: 10px 5px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 0.7rem; height: 50px; display: flex; align-items: center; justify-content: center; line-height: 1.2; }
+        .subject-btn { 
+            padding: 8px 5px; border: 2px solid #ddd; border-radius: 10px; background: white; cursor: pointer; 
+            font-size: 0.7rem; height: 65px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; 
+        }
         .subject-btn.active { background: #00b900; color: white; border-color: #00b900; font-weight: bold; }
+        
+        /* 目標点数の表示スタイル */
+        .target-score { font-size: 0.6rem; color: #ff4b4b; margin-top: 4px; font-weight: bold; }
+        .subject-btn.active .target-score { color: #fff; }
+
         #main-btn { width: 100%; padding: 18px; font-size: 1.3rem; border: none; border-radius: 50px; color: white; background: #00b900; font-weight: bold; cursor: pointer; }
         #main-btn.stop { background: #ff4b4b; }
+        
         #exam-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; overflow-y: auto; }
         .modal-content { background:white; margin:5% 5%; padding:20px; border-radius:20px; text-align:left; }
         .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
@@ -36,7 +43,7 @@
     <div id="user-name">読み込み中...</div>
 
     <div id="exam-countdown-area">
-        <span id="exam-title">学年末考査</span> まで あと <span id="days-left">--</span> 日
+        <span id="exam-title" style="font-weight:bold;">学年末考査</span> まで あと <span id="days-left">--</span> 日
         <div id="exam-msg"></div>
     </div>
 
@@ -49,52 +56,51 @@
 
     <div class="timer" id="timer-display">00:00</div>
 
-    <div id="goal-setting">
-        <span style="font-size: 0.8rem;">目標(分): </span>
-        <input type="number" id="goal-input" value="0" min="0">
-    </div>
-
     <div id="subject-selector-ui">
         <div class="subjects">
-            <div class="subject-btn active" onclick="selectSubject('現代の国語')">現代の国語</div>
-            <div class="subject-btn" onclick="selectSubject('言語文化')">言語文化</div>
-            <div class="subject-btn" onclick="selectSubject('数学Ⅰ')">数学Ⅰ</div>
-            <div class="subject-btn" onclick="selectSubject('数学A')">数学A</div>
-            <div class="subject-btn" onclick="selectSubject('論理表現Ⅰ')">論理表現Ⅰ</div>
-            <div class="subject-btn" onclick="selectSubject('ECⅠ')">ECⅠ</div>
-            <div class="subject-btn" onclick="selectSubject('物理基礎')">物理基礎</div>
-            <div class="subject-btn" onclick="selectSubject('化学基礎')">化学基礎</div>
-            <div class="subject-btn" onclick="selectSubject('生物基礎')">生物基礎</div>
-            <div class="subject-btn" onclick="selectSubject('歴史総合')">歴史総合</div>
-            <div class="subject-btn" onclick="selectSubject('芸術')">芸術</div>
-            <div class="subject-btn" onclick="selectSubject('保健')">保健</div>
-            <div class="subject-btn" onclick="selectSubject('サイエンス情報Ⅰ')">サイエンス情報Ⅰ</div>
+            <div class="subject-btn active" onclick="selectSubject('現代の国語')">現代の国語<span class="target-score" id="target-現代の国語"></span></div>
+            <div class="subject-btn" onclick="selectSubject('言語文化')">言語文化<span class="target-score" id="target-言語文化"></span></div>
+            <div class="subject-btn" onclick="selectSubject('数学Ⅰ')">数学Ⅰ<span class="target-score" id="target-数学Ⅰ"></span></div>
+            <div class="subject-btn" onclick="selectSubject('数学A')">数学A<span class="target-score" id="target-数学A"></span></div>
+            <div class="subject-btn" onclick="selectSubject('論理表現Ⅰ')">論理表現Ⅰ<span class="target-score" id="target-論理表現Ⅰ"></span></div>
+            <div class="subject-btn" onclick="selectSubject('ECⅠ')">ECⅠ<span class="target-score" id="target-ECⅠ"></span></div>
+            <div class="subject-btn" onclick="selectSubject('物理基礎')">物理基礎<span class="target-score" id="target-物理基礎"></span></div>
+            <div class="subject-btn" onclick="selectSubject('化学基礎')">化学基礎<span class="target-score" id="target-化学基礎"></span></div>
+            <div class="subject-btn" onclick="selectSubject('生物基礎')">生物基礎<span class="target-score" id="target-生物基礎"></span></div>
+            <div class="subject-btn" onclick="selectSubject('歴史総合')">歴史総合<span class="target-score" id="target-歴史総合"></span></div>
+            <div class="subject-btn" onclick="selectSubject('芸術')">芸術<span class="target-score" id="target-芸術"></span></div>
+            <div class="subject-btn" onclick="selectSubject('保健')">保健<span class="target-score" id="target-保健"></span></div>
+            <div class="subject-btn" onclick="selectSubject('サイエンス情報Ⅰ')">サイエンス情報Ⅰ<span class="target-score" id="target-サイエンス情報Ⅰ"></span></div>
         </div>
+    </div>
+
+    <div id="goal-setting" style="margin-bottom:15px;">
+        <span style="font-size: 0.8rem;">今回の目標(分): </span>
+        <input type="number" id="goal-input" value="0" min="0" style="width:50px; text-align:center;">
     </div>
 
     <button id="main-btn" onclick="toggleTimer()">START</button>
 
     <div id="exam-modal">
         <div class="modal-content">
-            <h3 style="margin-top:0; color:#00b900; font-size:1.1rem;">学年末考査 目標設定</h3>
+            <h3 style="margin-top:0; color:#00b900;">学年末考査 目標設定</h3>
             <div class="score-grid">
-                <div><span>現国</span><input type="number" class="score-in" data-sub="現代の国語" placeholder="点"></div>
-                <div><span>言文</span><input type="number" class="score-in" data-sub="言語文化" placeholder="点"></div>
-                <div><span>数Ⅰ</span><input type="number" class="score-in" data-sub="数学Ⅰ" placeholder="点"></div>
-                <div><span>数A</span><input type="number" class="score-in" data-sub="数学A" placeholder="点"></div>
-                <div><span>論理</span><input type="number" class="score-in" data-sub="論理表現Ⅰ" placeholder="点"></div>
-                <div><span>ECⅠ</span><input type="number" class="score-in" data-sub="ECⅠ" placeholder="点"></div>
-                <div><span>物理</span><input type="number" class="score-in" data-sub="物理基礎" placeholder="点"></div>
-                <div><span>化学</span><input type="number" class="score-in" data-sub="化学基礎" placeholder="点"></div>
-                <div><span>生物</span><input type="number" class="score-in" data-sub="生物基礎" placeholder="点"></div>
-                <div><span>歴史</span><input type="number" class="score-in" data-sub="歴史総合" placeholder="点"></div>
-                <div><span>芸術</span><input type="number" class="score-in" data-sub="芸術" placeholder="点"></div>
-                <div><span>保健</span><input type="number" class="score-in" data-sub="保健" placeholder="点"></div>
-                <div style="grid-column: span 2;"><span>サイエンス情報Ⅰ</span><input type="number" class="score-in" data-sub="サイエンス情報Ⅰ" placeholder="点"></div>
+                <div><span>現国</span><input type="number" class="score-in" data-sub="現代の国語"></div>
+                <div><span>言文</span><input type="number" class="score-in" data-sub="言語文化"></div>
+                <div><span>数Ⅰ</span><input type="number" class="score-in" data-sub="数学Ⅰ"></div>
+                <div><span>数A</span><input type="number" class="score-in" data-sub="数学A"></div>
+                <div><span>論理</span><input type="number" class="score-in" data-sub="論理表現Ⅰ"></div>
+                <div><span>ECⅠ</span><input type="number" class="score-in" data-sub="ECⅠ"></div>
+                <div><span>物理</span><input type="number" class="score-in" data-sub="物理基礎"></div>
+                <div><span>化学</span><input type="number" class="score-in" data-sub="化学基礎"></div>
+                <div><span>生物</span><input type="number" class="score-in" data-sub="生物基礎"></div>
+                <div><span>歴史</span><input type="number" class="score-in" data-sub="歴史総合"></div>
+                <div><span>芸術</span><input type="number" class="score-in" data-sub="芸術"></div>
+                <div><span>保健</span><input type="number" class="score-in" data-sub="保健"></div>
+                <div style="grid-column: span 2;"><span>サイエンス情報Ⅰ</span><input type="number" class="score-in" data-sub="サイエンス情報Ⅰ"></div>
             </div>
-            <label style="font-size:0.8rem; font-weight:bold;">意気込みを一言！</label>
-            <textarea id="exam-msg-input" rows="2" placeholder="例：全科目欠点回避！"></textarea>
-            <button onclick="saveExamGoal()" style="width:100%; padding:15px; background:#00b900; color:white; border:none; border-radius:12px; font-weight:bold;">目標を確定する 🔥</button>
+            <textarea id="exam-msg-input" rows="2" placeholder="意気込みを入力！"></textarea>
+            <button onclick="saveExamGoal()" style="width:100%; padding:15px; background:#00b900; color:white; border:none; border-radius:12px; font-weight:bold;">目標を確定する</button>
             <button onclick="closeExamModal()" style="width:100%; margin-top:10px; background:none; border:none; color:#999;">戻る</button>
         </div>
     </div>
@@ -103,7 +109,6 @@
         let startTime, timerInterval, goalSeconds;
         let isRunning = false, isCountdown = false, finalDuration = 0;
         let selectedSubject = '現代の国語', displayName = "Unknown";
-
         const GAS_URL = "https://script.google.com/macros/s/AKfycbx0lGxxv5qfnCe0zTuoqYSE-Pat2dY8Bne8O_1SQ1Neie6kVoTqHoBXBuorVg1ZakM/exec";
 
         async function initLiff() {
@@ -123,21 +128,27 @@
         async function loadHistory() {
             const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getHistory', userName: displayName }) });
             const res = await r.json();
-            if (res.status === "success") document.getElementById('total-time').innerText = res.totalMinutes;
+            if (res.status === "success") {
+                document.getElementById('total-time').innerText = res.totalMinutes;
+                // 目標点数を反映
+                if (res.scores) {
+                    for (let sub in res.scores) {
+                        const el = document.getElementById('target-' + sub);
+                        if (el && res.scores[sub]) el.innerText = res.scores[sub] + "点目標";
+                    }
+                }
+            }
         }
 
         async function loadExamCountdown() {
             const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getLatestExam', userName: displayName }) });
             const res = await r.json();
             const testDate = new Date("2026-03-02T00:00:00");
-            const today = new Date(); today.setHours(0,0,0,0);
-            const diffDays = Math.ceil((testDate - today) / (1000 * 60 * 60 * 24));
+            const diffDays = Math.ceil((testDate - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
             if (diffDays >= 0) {
                 document.getElementById('exam-countdown-area').style.display = 'block';
                 document.getElementById('days-left').innerText = diffDays;
-                if (res.status === "success" && res.goal) {
-                    document.getElementById('exam-msg').innerText = "「" + res.goal.message + "」";
-                }
+                if (res.status === "success" && res.goal) document.getElementById('exam-msg').innerText = "「" + res.goal.message + "」";
             }
         }
 
@@ -148,15 +159,11 @@
             const scores = {};
             document.querySelectorAll('.score-in').forEach(el => { scores[el.dataset.sub] = el.value || 0; });
             const msg = document.getElementById('exam-msg-input').value;
-            if (!msg) return alert("意気込みを入力してね！");
-            const data = { action: 'saveExamGoal', userName: displayName, scores: scores, message: msg };
-            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
-            alert("目標設定完了！");
-            closeExamModal();
-            loadExamCountdown();
+            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'saveExamGoal', userName: displayName, scores: scores, message: msg }) });
+            alert("目標設定完了！"); closeExamModal(); loadHistory(); loadExamCountdown();
         }
 
-        function selectSubject(s) { if (!isRunning) { selectedSubject = s; document.querySelectorAll('.subject-btn').forEach(b => b.classList.toggle('active', b.innerText === s)); } }
+        function selectSubject(s) { if (!isRunning) { selectedSubject = s; document.querySelectorAll('.subject-btn').forEach(b => b.classList.toggle('active', b.innerText.includes(s))); } }
 
         function toggleTimer() {
             const btn = document.getElementById('main-btn');
@@ -180,33 +187,18 @@
             clearInterval(timerInterval);
             const actual = Math.floor((Date.now() - startTime) / 1000);
             finalDuration = isCountdown ? Math.min(actual, goalSeconds) : actual;
-            document.getElementById('main-btn').style.display = 'none';
-            document.getElementById('subject-selector-ui').style.display = 'none';
             finishWithScore();
         }
 
         async function finishWithScore() {
             const min = Math.max(1, Math.ceil(finalDuration / 60));
             const data = { userName: displayName, subject: selectedSubject, duration: finalDuration, score: 3, goalMin: parseInt(document.getElementById('goal-input').value) || 0 };
-            
-            try {
-                const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
-                const res = await r.json();
-                
-                // ここで受け取るキー名が aiMsg であることを確実にチェック
-                const comment = res.aiMsg || "その調子！明日も頑張ろう！🔥";
-
-                if (liff.isInClient()) {
-                    await liff.sendMessages([{ 
-                        'type': 'text', 
-                        'text': `【学年末考査へ前進！】\n${selectedSubject}：${min}分\n\n武内AIからのコメント：\n${comment}` 
-                    }]);
-                }
-                liff.closeWindow();
-            } catch (e) {
-                console.error(e);
-                liff.closeWindow();
+            const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+            const res = await r.json();
+            if (liff.isInClient()) {
+                await liff.sendMessages([{ 'type': 'text', 'text': `【学年末考査へ前進！】\n${selectedSubject}：${min}分\n\n武内AIからのコメント：\n${res.aiMsg || "ナイス集中！"}` }]);
             }
+            liff.closeWindow();
         }
         initLiff();
     </script>
