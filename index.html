@@ -3,51 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>集中ログ - 学習記録</title>
+    <title>集中ログ - カウントダウン対応版</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; color: #333; }
         h2 { margin-bottom: 5px; color: #00b900; }
         #user-name { font-size: 0.8rem; margin-bottom: 15px; color: #666; }
-        
-        /* 履歴表示エリア */
-        #history-area { 
-            background: white; padding: 10px; border-radius: 12px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px;
-        }
+        #history-area { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; }
         #total-time { font-size: 1.5rem; font-weight: bold; color: #00b900; }
+        .timer { font-size: 3.5rem; font-weight: bold; margin: 15px 0; font-family: monospace; color: #444; }
         
-        .timer { font-size: 3rem; font-weight: bold; margin: 15px 0; font-family: monospace; }
-        
-        /* 科目選択：3列にしてコンパクトに */
-        .subjects { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 8px; 
-            margin-bottom: 20px; 
-        }
-        .subject-btn { 
-            padding: 10px 5px; 
-            border: 2px solid #ddd; 
-            border-radius: 8px; 
-            background: white; 
-            cursor: pointer; 
-            font-size: 0.75rem; /* 文字を少し小さくして収まりを良くする */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 45px;
-            transition: 0.2s;
-        }
+        /* 目標時間入力エリア */
+        #goal-setting { margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 10px; border: 1px solid #eee; }
+        #goal-input { width: 60px; padding: 5px; font-size: 1.2rem; border-radius: 5px; border: 1px solid #ddd; text-align: center; }
+
+        .subjects { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+        .subject-btn { padding: 10px 5px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 0.75rem; height: 45px; display: flex; align-items: center; justify-content: center; }
         .subject-btn.active { background: #00b900; color: white; border-color: #00b900; font-weight: bold; }
         
-        #main-btn { 
-            width: 100%; padding: 18px; font-size: 1.3rem; border: none; border-radius: 50px; 
-            color: white; background: #00b900; box-shadow: 0 4px 10px rgba(0,185,0,0.3);
-            font-weight: bold; cursor: pointer;
-        }
+        #main-btn { width: 100%; padding: 18px; font-size: 1.3rem; border: none; border-radius: 50px; color: white; background: #00b900; box-shadow: 0 4px 10px rgba(0,185,0,0.3); font-weight: bold; cursor: pointer; }
         #main-btn.stop { background: #ff4b4b; box-shadow: 0 4px 10px rgba(255,75,75,0.3); }
-        
         #feedback-area { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     </style>
 </head>
@@ -56,11 +31,17 @@
     <div id="user-name">読み込み中...</div>
 
     <div id="history-area">
-        <div style="font-size: 0.7rem;">合計学習時間</div>
-        <div><span id="total-time">--</span> <span style="font-size: 0.9rem;">分</span></div>
+        <div style="font-size: 0.7rem;">これまでの合計</div>
+        <div><span id="total-time">--</span> 分</div>
     </div>
 
     <div class="timer" id="timer-display">00:00</div>
+
+    <div id="goal-setting">
+        <span style="font-size: 0.8rem;">目標時間(分): </span>
+        <input type="number" id="goal-input" placeholder="0" min="0">
+        <div style="font-size: 0.6rem; color: #999;">※0ならカウントアップ</div>
+    </div>
 
     <div id="subject-selector-ui">
         <div class="subjects">
@@ -82,11 +63,11 @@
     </div>
 
     <div id="feedback-area" style="display:none; margin-top:20px;">
-        <p style="font-weight: bold;">今の集中度は？</p>
+        <p style="font-weight: bold;">お疲れ様！集中できた？</p>
         <div class="subjects">
-            <div class="subject-btn" onclick="finishWithScore('🤩', 3)" style="font-size: 0.8rem;">🤩 完璧！</div>
-            <div class="subject-btn" onclick="finishWithScore('😐', 2)" style="font-size: 0.8rem;">😐 普通</div>
-            <div class="subject-btn" onclick="finishWithScore('😴', 1)" style="font-size: 0.8rem;">😴 眠かった</div>
+            <div class="subject-btn" onclick="finishWithScore('🤩', 3)">🤩 完璧！</div>
+            <div class="subject-btn" onclick="finishWithScore('😐', 2)">😐 普通</div>
+            <div class="subject-btn" onclick="finishWithScore('😴', 1)">😴 眠かった</div>
         </div>
     </div>
 
@@ -95,7 +76,9 @@
     <script>
         let startTime, timerInterval;
         let isRunning = false;
-        let selectedSubject = '現代の国語'; // 初期値を変更
+        let isCountdown = false;
+        let goalSeconds = 0;
+        let selectedSubject = '現代の国語';
         let displayName = "Unknown";
         let finalDuration = 0;
 
@@ -112,9 +95,7 @@
                     document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
                     loadHistory();
                 }
-            } catch (err) {
-                console.error('LIFF初期化エラー', err);
-            }
+            } catch (err) { console.error(err); }
         }
 
         async function loadHistory() {
@@ -124,12 +105,8 @@
                     body: JSON.stringify({ action: 'getHistory', userName: displayName })
                 });
                 const result = await response.json();
-                if (result.status === "success") {
-                    document.getElementById('total-time').innerText = result.totalMinutes;
-                }
-            } catch (e) {
-                console.error("履歴取得エラー", e);
-            }
+                if (result.status === "success") document.getElementById('total-time').innerText = result.totalMinutes;
+            } catch (e) { console.error(e); }
         }
 
         function selectSubject(subject) {
@@ -142,55 +119,80 @@
 
         function toggleTimer() {
             const btn = document.getElementById('main-btn');
+            const goalInput = document.getElementById('goal-input');
+
             if (!isRunning) {
+                // START時
+                const goalMin = parseInt(goalInput.value) || 0;
+                if (goalMin > 0) {
+                    isCountdown = true;
+                    goalSeconds = goalMin * 60;
+                } else {
+                    isCountdown = false;
+                }
+
                 startTime = Date.now();
                 timerInterval = setInterval(updateTimer, 1000);
                 btn.innerText = 'STOP';
                 btn.classList.add('stop');
                 isRunning = true;
+                document.getElementById('goal-setting').style.display = 'none';
                 document.getElementById('history-area').style.opacity = "0.3";
             } else {
-                clearInterval(timerInterval);
-                finalDuration = Math.floor((Date.now() - startTime) / 1000);
-                document.getElementById('main-btn').style.display = 'none';
-                document.getElementById('subject-selector-ui').style.display = 'none';
-                document.getElementById('feedback-area').style.display = 'block';
+                // STOP時
+                stopTimerManually();
             }
         }
 
         function updateTimer() {
-            const diff = Math.floor((Date.now() - startTime) / 1000);
-            const mm = String(Math.floor(diff / 60)).padStart(2, '0');
-            const ss = String(diff % 60).padStart(2, '0');
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            let displaySec = 0;
+
+            if (isCountdown) {
+                displaySec = goalSeconds - elapsed;
+                if (displaySec <= 0) {
+                    displaySec = 0;
+                    stopTimerManually(); // 時間終了で自動停止
+                }
+            } else {
+                displaySec = elapsed;
+            }
+
+            const mm = String(Math.floor(displaySec / 60)).padStart(2, '0');
+            const ss = String(displaySec % 60).padStart(2, '0');
             document.getElementById('timer-display').innerText = `${mm}:${ss}`;
+        }
+
+        function stopTimerManually() {
+            clearInterval(timerInterval);
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            // カウントダウンの場合は目標時間を上限にする（オーバー防止）
+            finalDuration = isCountdown ? Math.min(elapsed, goalSeconds) : elapsed;
+
+            document.getElementById('main-btn').style.display = 'none';
+            document.getElementById('subject-selector-ui').style.display = 'none';
+            document.getElementById('feedback-area').style.display = 'block';
+            isRunning = false;
         }
 
         async function finishWithScore(emoji, score) {
             const minutes = Math.ceil(finalDuration / 60);
-            const data = { 
-                userName: displayName, 
-                subject: selectedSubject, 
-                duration: finalDuration, 
-                score: score 
-            };
+            const data = { userName: displayName, subject: selectedSubject, duration: finalDuration, score: score };
 
             try {
                 document.getElementById('feedback-area').style.pointerEvents = "none";
                 const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
                 const result = await response.json(); 
-                const aiResponse = result.aiMsg || "その調子！明日も応援してるよ！";
+                const aiResponse = result.aiMsg || "お疲れ様！";
 
                 if (liff.isInClient()) {
                     await liff.sendMessages([{
                         'type': 'text',
-                        'text': `${emoji}【記録完了】\n${selectedSubject}：${minutes}分\n\nAIメンターより：\n${aiResponse}`
+                        'text': `${emoji}【学習完了】\n${selectedSubject}：${minutes}分\n\nAIメンターより：\n${aiResponse}`
                     }]);
                 }
                 liff.closeWindow();
-            } catch (e) {
-                console.error(e);
-                liff.closeWindow();
-            }
+            } catch (e) { console.error(e); liff.closeWindow(); }
         }
 
         initLiff();
