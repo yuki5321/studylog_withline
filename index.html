@@ -3,28 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>集中ログ - 履歴＆AIメンター版</title>
+    <title>集中ログ - 学習記録</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; color: #333; }
         h2 { margin-bottom: 5px; color: #00b900; }
-        #user-name { font-size: 0.9rem; margin-bottom: 20px; color: #666; }
+        #user-name { font-size: 0.8rem; margin-bottom: 15px; color: #666; }
         
         /* 履歴表示エリア */
         #history-area { 
-            background: white; padding: 15px; border-radius: 15px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px;
+            background: white; padding: 10px; border-radius: 12px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px;
         }
-        #total-time { font-size: 1.8rem; font-weight: bold; color: #00b900; }
+        #total-time { font-size: 1.5rem; font-weight: bold; color: #00b900; }
         
-        .timer { font-size: 3.5rem; font-weight: bold; margin: 20px 0; font-family: monospace; }
+        .timer { font-size: 3rem; font-weight: bold; margin: 15px 0; font-family: monospace; }
         
-        .subjects { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-        .subject-btn { padding: 15px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; transition: 0.2s; }
+        /* 科目選択：3列にしてコンパクトに */
+        .subjects { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 8px; 
+            margin-bottom: 20px; 
+        }
+        .subject-btn { 
+            padding: 10px 5px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            background: white; 
+            cursor: pointer; 
+            font-size: 0.75rem; /* 文字を少し小さくして収まりを良くする */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 45px;
+            transition: 0.2s;
+        }
         .subject-btn.active { background: #00b900; color: white; border-color: #00b900; font-weight: bold; }
         
         #main-btn { 
-            width: 100%; padding: 20px; font-size: 1.5rem; border: none; border-radius: 50px; 
+            width: 100%; padding: 18px; font-size: 1.3rem; border: none; border-radius: 50px; 
             color: white; background: #00b900; box-shadow: 0 4px 10px rgba(0,185,0,0.3);
             font-weight: bold; cursor: pointer;
         }
@@ -38,17 +56,27 @@
     <div id="user-name">読み込み中...</div>
 
     <div id="history-area">
-        <div style="font-size: 0.8rem;">これまでの合計学習時間</div>
-        <div><span id="total-time">--</span> <span style="font-size: 1rem;">分</span></div>
+        <div style="font-size: 0.7rem;">合計学習時間</div>
+        <div><span id="total-time">--</span> <span style="font-size: 0.9rem;">分</span></div>
     </div>
 
     <div class="timer" id="timer-display">00:00</div>
 
     <div id="subject-selector-ui">
         <div class="subjects">
-            <div class="subject-btn active" onclick="selectSubject('英語')">英語</div>
-            <div class="subject-btn" onclick="selectSubject('数学')">数学</div>
-            <div class="subject-btn" onclick="selectSubject('国語')">国語</div>
+            <div class="subject-btn active" onclick="selectSubject('現代の国語')">現代の国語</div>
+            <div class="subject-btn" onclick="selectSubject('言語文化')">言語文化</div>
+            <div class="subject-btn" onclick="selectSubject('数学Ⅰ')">数学Ⅰ</div>
+            <div class="subject-btn" onclick="selectSubject('数学A')">数学A</div>
+            <div class="subject-btn" onclick="selectSubject('歴史総合')">歴史総合</div>
+            <div class="subject-btn" onclick="selectSubject('化学基礎')">化学基礎</div>
+            <div class="subject-btn" onclick="selectSubject('物理基礎')">物理基礎</div>
+            <div class="subject-btn" onclick="selectSubject('生物基礎')">生物基礎</div>
+            <div class="subject-btn" onclick="selectSubject('論理表現Ⅰ')">論理表現Ⅰ</div>
+            <div class="subject-btn" onclick="selectSubject('ECⅠ')">ECⅠ</div>
+            <div class="subject-btn" onclick="selectSubject('保健')">保健</div>
+            <div class="subject-btn" onclick="selectSubject('芸術')">芸術</div>
+            <div class="subject-btn" onclick="selectSubject('情報Ⅰ')">情報Ⅰ</div>
             <div class="subject-btn" onclick="selectSubject('その他')">その他</div>
         </div>
     </div>
@@ -56,9 +84,9 @@
     <div id="feedback-area" style="display:none; margin-top:20px;">
         <p style="font-weight: bold;">今の集中度は？</p>
         <div class="subjects">
-            <div class="subject-btn" onclick="finishWithScore('🤩', 3)">🤩 完璧！</div>
-            <div class="subject-btn" onclick="finishWithScore('😐', 2)">😐 普通</div>
-            <div class="subject-btn" onclick="finishWithScore('😴', 1)">😴 眠かった</div>
+            <div class="subject-btn" onclick="finishWithScore('🤩', 3)" style="font-size: 0.8rem;">🤩 完璧！</div>
+            <div class="subject-btn" onclick="finishWithScore('😐', 2)" style="font-size: 0.8rem;">😐 普通</div>
+            <div class="subject-btn" onclick="finishWithScore('😴', 1)" style="font-size: 0.8rem;">😴 眠かった</div>
         </div>
     </div>
 
@@ -67,7 +95,7 @@
     <script>
         let startTime, timerInterval;
         let isRunning = false;
-        let selectedSubject = '英語';
+        let selectedSubject = '現代の国語'; // 初期値を変更
         let displayName = "Unknown";
         let finalDuration = 0;
 
@@ -82,7 +110,6 @@
                     const profile = await liff.getProfile();
                     displayName = profile.displayName; 
                     document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
-                    // 名前が取れたら履歴を取得
                     loadHistory();
                 }
             } catch (err) {
@@ -90,15 +117,11 @@
             }
         }
 
-        // 履歴を取得する関数
         async function loadHistory() {
             try {
                 const response = await fetch(GAS_URL, {
                     method: 'POST',
-                    body: JSON.stringify({
-                        action: 'getHistory',
-                        userName: displayName
-                    })
+                    body: JSON.stringify({ action: 'getHistory', userName: displayName })
                 });
                 const result = await response.json();
                 if (result.status === "success") {
@@ -125,7 +148,6 @@
                 btn.innerText = 'STOP';
                 btn.classList.add('stop');
                 isRunning = true;
-                // 学習中は履歴を隠してタイマーに集中させる
                 document.getElementById('history-area').style.opacity = "0.3";
             } else {
                 clearInterval(timerInterval);
@@ -153,14 +175,8 @@
             };
 
             try {
-                // ボタンを連打できないように無効化
                 document.getElementById('feedback-area').style.pointerEvents = "none";
-                
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(data)
-                });
-                
+                const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
                 const result = await response.json(); 
                 const aiResponse = result.aiMsg || "その調子！明日も応援してるよ！";
 
@@ -173,7 +189,6 @@
                 liff.closeWindow();
             } catch (e) {
                 console.error(e);
-                alert("保存中にエラーが発生しました。");
                 liff.closeWindow();
             }
         }
