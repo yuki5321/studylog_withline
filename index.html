@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>集中ログ - カウントダウン対応版</title>
+    <title>集中ログ - 目標達成率対応版</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; color: #333; }
@@ -13,7 +13,6 @@
         #total-time { font-size: 1.5rem; font-weight: bold; color: #00b900; }
         .timer { font-size: 3.5rem; font-weight: bold; margin: 15px 0; font-family: monospace; color: #444; }
         
-        /* 目標時間入力エリア */
         #goal-setting { margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 10px; border: 1px solid #eee; }
         #goal-input { width: 60px; padding: 5px; font-size: 1.2rem; border-radius: 5px; border: 1px solid #ddd; text-align: center; }
 
@@ -122,7 +121,6 @@
             const goalInput = document.getElementById('goal-input');
 
             if (!isRunning) {
-                // START時
                 const goalMin = parseInt(goalInput.value) || 0;
                 if (goalMin > 0) {
                     isCountdown = true;
@@ -139,7 +137,6 @@
                 document.getElementById('goal-setting').style.display = 'none';
                 document.getElementById('history-area').style.opacity = "0.3";
             } else {
-                // STOP時
                 stopTimerManually();
             }
         }
@@ -152,7 +149,7 @@
                 displaySec = goalSeconds - elapsed;
                 if (displaySec <= 0) {
                     displaySec = 0;
-                    stopTimerManually(); // 時間終了で自動停止
+                    stopTimerManually();
                 }
             } else {
                 displaySec = elapsed;
@@ -166,8 +163,7 @@
         function stopTimerManually() {
             clearInterval(timerInterval);
             const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            // カウントダウンの場合は目標時間を上限にする（オーバー防止）
-            finalDuration = isCountdown ? Math.min(elapsed, goalSeconds) : elapsed;
+            finalDuration = isCountdown ? Math.max(elapsed, goalSeconds) : elapsed;
 
             document.getElementById('main-btn').style.display = 'none';
             document.getElementById('subject-selector-ui').style.display = 'none';
@@ -177,18 +173,38 @@
 
         async function finishWithScore(emoji, score) {
             const minutes = Math.ceil(finalDuration / 60);
-            const data = { userName: displayName, subject: selectedSubject, duration: finalDuration, score: score };
+            // 目標値を取得
+            const goalMin = parseInt(document.getElementById('goal-input').value) || 0;
+            
+            // 達成率計算
+            let achievementRateText = "";
+            if (goalMin > 0) {
+                const rate = Math.floor((minutes / goalMin) * 100);
+                achievementRateText = `\n🎯 目標達成率：${rate}%`;
+            }
+
+            const data = { 
+                userName: displayName, 
+                subject: selectedSubject, 
+                duration: finalDuration, 
+                score: score,
+                goalMin: goalMin // GASに送信
+            };
 
             try {
                 document.getElementById('feedback-area').style.pointerEvents = "none";
-                const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+                const response = await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify(data) 
+                });
+                
                 const result = await response.json(); 
                 const aiResponse = result.aiMsg || "お疲れ様！";
 
                 if (liff.isInClient()) {
                     await liff.sendMessages([{
                         'type': 'text',
-                        'text': `${emoji}【学習完了】\n${selectedSubject}：${minutes}分\n\nAIメンターより：\n${aiResponse}`
+                        'text': `${emoji}【学習完了】\n${selectedSubject}：${minutes}分${achievementRateText}\n\nAIメンターより：\n${aiResponse}`
                     }]);
                 }
                 liff.closeWindow();
