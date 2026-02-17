@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>集中ログ - 武内AI & 目標点数表示版</title>
+    <title>集中ログ - 武内AI 最終安定版</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; color: #333; }
@@ -15,21 +15,17 @@
         #history-area { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; }
         #total-time { font-size: 1.6rem; font-weight: bold; color: #00b900; }
         .timer { font-size: 3.5rem; font-weight: bold; margin: 15px 0; font-family: monospace; }
-        
         .subjects { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
         .subject-btn { 
             padding: 8px 5px; border: 2px solid #ddd; border-radius: 10px; background: white; cursor: pointer; 
             font-size: 0.7rem; height: 65px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; 
         }
         .subject-btn.active { background: #00b900; color: white; border-color: #00b900; font-weight: bold; }
-        
-        /* 目標点数の表示スタイル */
         .target-score { font-size: 0.6rem; color: #ff4b4b; margin-top: 4px; font-weight: bold; }
         .subject-btn.active .target-score { color: #fff; }
-
         #main-btn { width: 100%; padding: 18px; font-size: 1.3rem; border: none; border-radius: 50px; color: white; background: #00b900; font-weight: bold; cursor: pointer; }
         #main-btn.stop { background: #ff4b4b; }
-        
+        #feedback-area { background: white; padding: 20px; border-radius: 20px; display:none; }
         #exam-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; overflow-y: auto; }
         .modal-content { background:white; margin:5% 5%; padding:20px; border-radius:20px; text-align:left; }
         .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
@@ -43,7 +39,7 @@
     <div id="user-name">読み込み中...</div>
 
     <div id="exam-countdown-area">
-        <span id="exam-title" style="font-weight:bold;">学年末考査</span> まで あと <span id="days-left">--</span> 日
+        <span style="font-weight:bold;">学年末考査</span> まで あと <span id="days-left">--</span> 日
         <div id="exam-msg"></div>
     </div>
 
@@ -77,6 +73,15 @@
     <div id="goal-setting" style="margin-bottom:15px;">
         <span style="font-size: 0.8rem;">今回の目標(分): </span>
         <input type="number" id="goal-input" value="0" min="0" style="width:50px; text-align:center;">
+    </div>
+
+    <div id="feedback-area">
+        <p style="font-weight: bold;">集中できた？</p>
+        <div class="subjects">
+            <div class="subject-btn" onclick="finishWithScore('🤩', 3)">🤩 完璧</div>
+            <div class="subject-btn" onclick="finishWithScore('😐', 2)">😐 普通</div>
+            <div class="subject-btn" onclick="finishWithScore('😴', 1)">😴 眠い</div>
+        </div>
     </div>
 
     <button id="main-btn" onclick="toggleTimer()">START</button>
@@ -119,10 +124,29 @@
                     const profile = await liff.getProfile();
                     displayName = profile.displayName; 
                     document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
-                    loadHistory();
-                    loadExamCountdown();
+                    await loadHistory();
+                    await loadExamCountdown();
+                    checkResumeTimer(); // タイマーの復元チェック
                 }
             } catch (err) { console.error(err); }
+        }
+
+        function checkResumeTimer() {
+            const savedStart = localStorage.getItem('study_startTime');
+            if (savedStart) {
+                startTime = parseInt(savedStart);
+                const savedGoal = localStorage.getItem('study_goalMin');
+                const savedSub = localStorage.getItem('study_subject');
+                if (savedSub) selectSubject(savedSub);
+                document.getElementById('goal-input').value = savedGoal || 0;
+                isCountdown = (parseInt(savedGoal) || 0) > 0;
+                goalSeconds = (parseInt(savedGoal) || 0) * 60;
+                isRunning = true;
+                timerInterval = setInterval(updateTimer, 1000);
+                const btn = document.getElementById('main-btn');
+                btn.innerText = 'STOP'; btn.classList.add('stop');
+                document.getElementById('goal-setting').style.display = 'none';
+            }
         }
 
         async function loadHistory() {
@@ -130,7 +154,6 @@
             const res = await r.json();
             if (res.status === "success") {
                 document.getElementById('total-time').innerText = res.totalMinutes;
-                // 目標点数を反映
                 if (res.scores) {
                     for (let sub in res.scores) {
                         const el = document.getElementById('target-' + sub);
@@ -170,7 +193,11 @@
             if (!isRunning) {
                 const gMin = parseInt(document.getElementById('goal-input').value) || 0;
                 isCountdown = gMin > 0; goalSeconds = gMin * 60;
-                startTime = Date.now(); timerInterval = setInterval(updateTimer, 1000);
+                startTime = Date.now(); 
+                localStorage.setItem('study_startTime', startTime);
+                localStorage.setItem('study_goalMin', gMin);
+                localStorage.setItem('study_subject', selectedSubject);
+                timerInterval = setInterval(updateTimer, 1000);
                 btn.innerText = 'STOP'; btn.classList.add('stop'); isRunning = true;
                 document.getElementById('goal-setting').style.display = 'none';
             } else { stopTimer(); }
@@ -187,18 +214,34 @@
             clearInterval(timerInterval);
             const actual = Math.floor((Date.now() - startTime) / 1000);
             finalDuration = isCountdown ? Math.min(actual, goalSeconds) : actual;
-            finishWithScore();
+            document.getElementById('main-btn').style.display = 'none';
+            document.getElementById('subject-selector-ui').style.display = 'none';
+            document.getElementById('feedback-area').style.display = 'block';
+            isRunning = false;
         }
 
-        async function finishWithScore() {
+        async function finishWithScore(emoji, score) {
             const min = Math.max(1, Math.ceil(finalDuration / 60));
-            const data = { userName: displayName, subject: selectedSubject, duration: finalDuration, score: 3, goalMin: parseInt(document.getElementById('goal-input').value) || 0 };
-            const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
-            const res = await r.json();
-            if (liff.isInClient()) {
-                await liff.sendMessages([{ 'type': 'text', 'text': `【学年末考査へ前進！】\n${selectedSubject}：${min}分\n\n武内AIからのコメント：\n${res.aiMsg || "ナイス集中！"}` }]);
-            }
-            liff.closeWindow();
+            if (min < 5) { alert("5分以上の学習のみ記録できます。あと少し頑張ろう！🔥"); location.reload(); return; }
+
+            // 連打防止
+            const allButtons = document.querySelectorAll('button, .subject-btn');
+            allButtons.forEach(btn => btn.style.pointerEvents = 'none');
+            const statusMsg = document.createElement('p');
+            statusMsg.innerText = "武内AIに送信中...🚀"; statusMsg.style.color = "#00b900";
+            document.getElementById('feedback-area').appendChild(statusMsg);
+
+            const data = { userName: displayName, subject: selectedSubject, duration: finalDuration, score: score, goalMin: parseInt(document.getElementById('goal-input').value) || 0 };
+            
+            try {
+                const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data) });
+                const res = await r.json();
+                localStorage.clear();
+                if (liff.isInClient()) {
+                    await liff.sendMessages([{ 'type': 'text', 'text': `【学年末考査へ前進！】\n${selectedSubject}：${min}分\n\n武内AIからのコメント：\n${res.aiMsg || "ナイス集中！"}` }]);
+                }
+                liff.closeWindow();
+            } catch (e) { alert("エラーが発生しました。"); allButtons.forEach(btn => btn.style.pointerEvents = 'auto'); statusMsg.remove(); }
         }
         initLiff();
     </script>
