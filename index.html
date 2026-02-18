@@ -5,32 +5,163 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>集中ログ - 武内AI 最強安定版</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; color: #333; }
-        h2 { margin-bottom: 5px; color: #00b900; }
-        #user-name { font-size: 0.8rem; margin-bottom: 10px; color: #666; }
-        #exam-countdown-area { display:none; background: #fff3cd; padding: 12px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #ffeeba; }
+        :root {
+            --bg-primary: #f4f7f6;
+            --bg-secondary: white;
+            --bg-accent: #fff3cd;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --text-accent: #00b900;
+            --border-color: #ddd;
+            --shadow-color: rgba(0,0,0,0.05);
+            --btn-bg: #f9f9f9;
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-accent: #3d3d1a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --text-accent: #00ff00;
+            --border-color: #444;
+            --shadow-color: rgba(0,0,0,0.3);
+            --btn-bg: #3a3a3a;
+        }
+        
+        body { 
+            font-family: sans-serif; 
+            text-align: center; 
+            padding: 20px; 
+            background: var(--bg-primary); 
+            color: var(--text-primary);
+            transition: background 0.3s, color 0.3s;
+        }
+        h2 { margin-bottom: 5px; color: var(--text-accent); }
+        #user-name { font-size: 0.8rem; margin-bottom: 10px; color: var(--text-secondary); }
+        #theme-toggle { 
+            position: absolute; 
+            top: 15px; 
+            right: 15px; 
+            background: var(--bg-secondary); 
+            border: 2px solid var(--border-color); 
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            cursor: pointer; 
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        #theme-toggle:hover { transform: scale(1.1); }
+        #exam-countdown-area { 
+            display:none; 
+            background: var(--bg-accent); 
+            padding: 12px; 
+            border-radius: 12px; 
+            margin-bottom: 15px; 
+            border: 1px solid var(--border-color);
+        }
         #days-left { font-size: 1.8rem; color: #d9534f; font-weight: bold; }
-        #history-area { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        #total-time { font-size: 1.6rem; font-weight: bold; color: #00b900; }
+        #history-area { 
+            background: var(--bg-secondary); 
+            padding: 12px; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 4px var(--shadow-color); 
+            margin-bottom: 15px; 
+        }
+        #total-time { font-size: 1.6rem; font-weight: bold; color: var(--text-accent); }
         .timer { font-size: 3.5rem; font-weight: bold; margin: 15px 0; font-family: monospace; }
         .subjects { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
-        .subject-btn { padding: 8px 5px; border: 2px solid #ddd; border-radius: 10px; background: white; font-size: 0.7rem; height: 65px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
+        .subject-btn { 
+            padding: 8px 5px; 
+            border: 2px solid var(--border-color); 
+            border-radius: 10px; 
+            background: var(--bg-secondary); 
+            color: var(--text-primary);
+            font-size: 0.7rem; 
+            height: 65px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            line-height: 1.2;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .subject-btn:hover { transform: scale(1.05); }
         .subject-btn.active { background: #00b900; color: white; border-color: #00b900; font-weight: bold; }
+        
+        /* 科目別カラー */
+        .subject-btn[data-subject*="国語"] { border-color: #ff6b9d; }
+        .subject-btn[data-subject*="言語文化"] { border-color: #ff8fa3; }
+        .subject-btn[data-subject*="数学"] { border-color: #4a90e2; }
+        .subject-btn[data-subject*="論理表現"] { border-color: #6bcf7f; }
+        .subject-btn[data-subject*="EC"] { border-color: #52c78a; }
+        .subject-btn[data-subject*="物理"] { border-color: #9b59b6; }
+        .subject-btn[data-subject*="化学"] { border-color: #e67e22; }
+        .subject-btn[data-subject*="生物"] { border-color: #27ae60; }
+        .subject-btn[data-subject*="歴史"] { border-color: #d4990d; }
+        .subject-btn[data-subject*="芸術"] { border-color: #e91e63; }
+        .subject-btn[data-subject*="保健"] { border-color: #00bcd4; }
+        .subject-btn[data-subject*="情報"] { border-color: #607d8b; }
+        
+        .subject-icon { font-size: 1.2rem; margin-bottom: 2px; }
         .target-score { font-size: 0.6rem; color: #ff4b4b; margin-top: 4px; font-weight: bold; }
         .subject-btn.active .target-score { color: #fff; }
         #main-btn { width: 100%; padding: 18px; font-size: 1.3rem; border: none; border-radius: 50px; color: white; background: #00b900; font-weight: bold; }
         #main-btn.stop { background: #ff4b4b; }
-        #feedback-area { background: white; padding: 20px; border-radius: 20px; display:none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #feedback-area { 
+            background: var(--bg-secondary); 
+            padding: 20px; 
+            border-radius: 20px; 
+            display:none; 
+            box-shadow: 0 4px 15px var(--shadow-color);
+        }
         #exam-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; overflow-y: auto; }
-        .modal-content { background:white; margin:5% 5%; padding:20px; border-radius:20px; text-align:left; }
+        .modal-content { 
+            background: var(--bg-secondary); 
+            margin:5% 5%; 
+            padding:20px; 
+            border-radius:20px; 
+            text-align:left;
+        }
         .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
-        .score-grid div { display: flex; align-items: center; justify-content: space-between; background: #f9f9f9; padding: 8px; border-radius: 8px; font-size: 0.8rem; }
-        .score-grid input { width: 45px; padding: 5px; text-align: center; border: 1px solid #ccc; border-radius: 5px; }
-        #status-indicator { color: #00b900; font-weight: bold; margin-top: 10px; }
+        .score-grid div { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            background: var(--btn-bg); 
+            padding: 8px; 
+            border-radius: 8px; 
+            font-size: 0.8rem; 
+        }
+        .score-grid input { 
+            width: 45px; 
+            padding: 5px; 
+            text-align: center; 
+            border: 1px solid var(--border-color); 
+            border-radius: 5px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        #status-indicator { color: var(--text-accent); font-weight: bold; margin-top: 10px; }
+        #goal-setting { margin-bottom:15px; }
+        #goal-input {
+            width:50px; 
+            text-align:center;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
     </style>
 </head>
 <body>
+    <button id="theme-toggle" onclick="toggleTheme()" title="ダークモード切り替え">🌙</button>
     <h2>学習記録</h2>
     <div id="user-name">読み込み中...</div>
 
@@ -50,19 +181,45 @@
 
     <div id="subject-selector-ui">
         <div class="subjects">
-            <div class="subject-btn active" onclick="selectSubject('現代の国語')">現代の国語<span class="target-score" id="target-現代の国語"></span></div>
-            <div class="subject-btn" onclick="selectSubject('言語文化')">言語文化<span class="target-score" id="target-言語文化"></span></div>
-            <div class="subject-btn" onclick="selectSubject('数学Ⅰ')">数学Ⅰ<span class="target-score" id="target-数学Ⅰ"></span></div>
-            <div class="subject-btn" onclick="selectSubject('数学A')">数学A<span class="target-score" id="target-数学A"></span></div>
-            <div class="subject-btn" onclick="selectSubject('論理表現Ⅰ')">論理表現Ⅰ<span class="target-score" id="target-論理表現Ⅰ"></span></div>
-            <div class="subject-btn" onclick="selectSubject('ECⅠ')">ECⅠ<span class="target-score" id="target-ECⅠ"></span></div>
-            <div class="subject-btn" onclick="selectSubject('物理基礎')">物理基礎<span class="target-score" id="target-物理基礎"></span></div>
-            <div class="subject-btn" onclick="selectSubject('化学基礎')">化学基礎<span class="target-score" id="target-化学基礎"></span></div>
-            <div class="subject-btn" onclick="selectSubject('生物基礎')">生物基礎<span class="target-score" id="target-生物基礎"></span></div>
-            <div class="subject-btn" onclick="selectSubject('歴史総合')">歴史総合<span class="target-score" id="target-歴史総合"></span></div>
-            <div class="subject-btn" onclick="selectSubject('芸術')">芸術<span class="target-score" id="target-芸術"></span></div>
-            <div class="subject-btn" onclick="selectSubject('保健')">保健<span class="target-score" id="target-保健"></span></div>
-            <div class="subject-btn" onclick="selectSubject('サイエンス情報Ⅰ')">サイエンス情報Ⅰ<span class="target-score" id="target-サイエンス情報Ⅰ"></span></div>
+            <div class="subject-btn active" data-subject="現代の国語" onclick="selectSubject('現代の国語')">
+                <span class="subject-icon">📖</span>現代の国語<span class="target-score" id="target-現代の国語"></span>
+            </div>
+            <div class="subject-btn" data-subject="言語文化" onclick="selectSubject('言語文化')">
+                <span class="subject-icon">🌸</span>言語文化<span class="target-score" id="target-言語文化"></span>
+            </div>
+            <div class="subject-btn" data-subject="数学Ⅰ" onclick="selectSubject('数学Ⅰ')">
+                <span class="subject-icon">📊</span>数学Ⅰ<span class="target-score" id="target-数学Ⅰ"></span>
+            </div>
+            <div class="subject-btn" data-subject="数学A" onclick="selectSubject('数学A')">
+                <span class="subject-icon">🔢</span>数学A<span class="target-score" id="target-数学A"></span>
+            </div>
+            <div class="subject-btn" data-subject="論理表現Ⅰ" onclick="selectSubject('論理表現Ⅰ')">
+                <span class="subject-icon">💬</span>論理表現Ⅰ<span class="target-score" id="target-論理表現Ⅰ"></span>
+            </div>
+            <div class="subject-btn" data-subject="ECⅠ" onclick="selectSubject('ECⅠ')">
+                <span class="subject-icon">🌎</span>ECⅠ<span class="target-score" id="target-ECⅠ"></span>
+            </div>
+            <div class="subject-btn" data-subject="物理基礎" onclick="selectSubject('物理基礎')">
+                <span class="subject-icon">⚛️</span>物理基礎<span class="target-score" id="target-物理基礎"></span>
+            </div>
+            <div class="subject-btn" data-subject="化学基礎" onclick="selectSubject('化学基礎')">
+                <span class="subject-icon">🧪</span>化学基礎<span class="target-score" id="target-化学基礎"></span>
+            </div>
+            <div class="subject-btn" data-subject="生物基礎" onclick="selectSubject('生物基礎')">
+                <span class="subject-icon">🌱</span>生物基礎<span class="target-score" id="target-生物基礎"></span>
+            </div>
+            <div class="subject-btn" data-subject="歴史総合" onclick="selectSubject('歴史総合')">
+                <span class="subject-icon">🏛️</span>歴史総合<span class="target-score" id="target-歴史総合"></span>
+            </div>
+            <div class="subject-btn" data-subject="芸術" onclick="selectSubject('芸術')">
+                <span class="subject-icon">🎨</span>芸術<span class="target-score" id="target-芸術"></span>
+            </div>
+            <div class="subject-btn" data-subject="保健" onclick="selectSubject('保健')">
+                <span class="subject-icon">💚</span>保健<span class="target-score" id="target-保健"></span>
+            </div>
+            <div class="subject-btn" data-subject="サイエンス情報Ⅰ" onclick="selectSubject('サイエンス情報Ⅰ')">
+                <span class="subject-icon">💻</span>サイエンス情報Ⅰ<span class="target-score" id="target-サイエンス情報Ⅰ"></span>
+            </div>
         </div>
     </div>
 
@@ -113,6 +270,22 @@
         let selectedSubject = '現代の国語', displayName = "Unknown";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbx0lGxxv5qfnCe0zTuoqYSE-Pat2dY8Bne8O_1SQ1Neie6kVoTqHoBXBuorVg1ZakM/exec";
 
+        // ダークモード切り替え
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            document.getElementById('theme-toggle').innerText = newTheme === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // テーマの初期化
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-toggle').innerText = savedTheme === 'dark' ? '☀️' : '🌙';
+        }
+
         async function initLiff() {
             try {
                 await liff.init({ liffId: "2009056355-TruGatly" }); 
@@ -124,8 +297,59 @@
                     await loadHistory();
                     await loadExamCountdown();
                     checkResumeTimer();
+                    await checkPendingRecords(); // 未送信記録のチェック
                 }
             } catch (err) { console.error(err); }
+        }
+
+        // 未送信記録のチェックと再送
+        async function checkPendingRecords() {
+            const pending = localStorage.getItem('pendingRecords');
+            if (!pending) return;
+
+            const records = JSON.parse(pending);
+            if (records.length === 0) return;
+
+            const confirm = window.confirm(`未送信の学習記録が${records.length}件あります。\n送信しますか？`);
+            if (!confirm) return;
+
+            const indicator = document.getElementById('user-name');
+            const originalText = indicator.innerText;
+            indicator.innerText = '未送信記録を送信中...';
+
+            let successCount = 0;
+            const failedRecords = [];
+
+            for (const record of records) {
+                try {
+                    const r = await fetch(GAS_URL, { 
+                        method: 'POST', 
+                        body: JSON.stringify(record),
+                        signal: AbortSignal.timeout(10000)
+                    });
+                    const res = await r.json();
+                    if (res.status === 'success') {
+                        successCount++;
+                    } else {
+                        failedRecords.push(record);
+                    }
+                } catch (e) {
+                    console.error('再送失敗:', e);
+                    failedRecords.push(record);
+                }
+            }
+
+            // 失敗した記録のみ保持
+            if (failedRecords.length > 0) {
+                localStorage.setItem('pendingRecords', JSON.stringify(failedRecords));
+                alert(`${successCount}件送信完了。${failedRecords.length}件は再送失敗しました。`);
+            } else {
+                localStorage.removeItem('pendingRecords');
+                alert(`${successCount}件すべて送信完了しました！`);
+            }
+
+            indicator.innerText = originalText;
+            await loadHistory(); // 履歴を更新
         }
 
         function checkResumeTimer() {
@@ -187,7 +411,15 @@
             alert("目標設定完了！"); closeExamModal(); loadHistory(); loadExamCountdown();
         }
 
-        function selectSubject(s) { if (!isRunning) { selectedSubject = s; document.querySelectorAll('.subject-btn').forEach(b => b.classList.toggle('active', b.innerText.includes(s))); } }
+        function selectSubject(s) { 
+            if (!isRunning) { 
+                selectedSubject = s; 
+                document.querySelectorAll('.subject-btn').forEach(b => {
+                    const isActive = b.getAttribute('data-subject') === s;
+                    b.classList.toggle('active', isActive);
+                });
+            } 
+        }
 
         function toggleTimer() {
             const btn = document.getElementById('main-btn');
@@ -215,10 +447,65 @@
             clearInterval(timerInterval);
             const actual = Math.floor((Date.now() - startTime) / 1000);
             finalDuration = isCountdown ? Math.min(actual, goalSeconds) : actual;
+            
+            // 達成感アニメーション（紙吹雪）
+            celebrateCompletion(finalDuration);
+            
             document.getElementById('main-btn').style.display = 'none';
             document.getElementById('subject-selector-ui').style.display = 'none';
             document.getElementById('feedback-area').style.display = 'block';
             isRunning = false;
+        }
+
+        // 達成感演出
+        function celebrateCompletion(duration) {
+            const minutes = Math.ceil(duration / 60);
+            
+            // 5分未満は控えめ
+            if (minutes < 5) return;
+            
+            // 基本の紙吹雪
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+            
+            // 10分以上でさらに派手に
+            if (minutes >= 10) {
+                setTimeout(() => {
+                    confetti({
+                        particleCount: 50,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 }
+                    });
+                    confetti({
+                        particleCount: 50,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 }
+                    });
+                }, 200);
+            }
+            
+            // 30分以上で連続花火
+            if (minutes >= 30) {
+                let count = 0;
+                const interval = setInterval(() => {
+                    confetti({
+                        particleCount: 30,
+                        startVelocity: 30,
+                        spread: 360,
+                        origin: {
+                            x: Math.random(),
+                            y: Math.random() - 0.2
+                        }
+                    });
+                    count++;
+                    if (count >= 3) clearInterval(interval);
+                }, 300);
+            }
         }
 
         async function finishWithScore(emoji, score) {
@@ -233,32 +520,50 @@
 
             const data = { userName: displayName, subject: selectedSubject, duration: finalDuration, score: score, goalMin: parseInt(document.getElementById('goal-input').value) || 0 };
             
-            // タイムアウト監視 (10秒)
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => {
-                controller.abort();
-                alert("送信に時間がかかっています。通信環境を確認してもう一度ボタンを押してください。");
-                allBtns.forEach(b => b.style.pointerEvents = 'auto');
-                indicator.innerText = "再試行してください";
-            }, 10000);
-
             try {
-                const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(data), signal: controller.signal });
+                const r = await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify(data),
+                    signal: AbortSignal.timeout(10000) // 10秒タイムアウト
+                });
                 const res = await r.json();
-                clearTimeout(timeoutId);
-                localStorage.clear();
-                if (liff.isInClient()) {
-                    await liff.sendMessages([{ 'type': 'text', 'text': `【学年末考査へ前進！】\n${selectedSubject}：${min}分\n\n武内AIからのコメント：\n${res.aiMsg || "ナイス集中！"}` }]);
+                
+                if (res.status === 'success') {
+                    localStorage.removeItem('study_startTime');
+                    localStorage.removeItem('study_goalMin');
+                    localStorage.removeItem('study_subject');
+                    
+                    if (liff.isInClient()) {
+                        await liff.sendMessages([{ 'type': 'text', 'text': `【学年末考査へ前進！】\n${selectedSubject}：${min}分\n\n武内AIからのコメント：\n${res.aiMsg || "ナイス集中！"}` }]);
+                    }
+                    liff.closeWindow();
+                } else {
+                    throw new Error('送信失敗');
                 }
-                liff.closeWindow();
             } catch (e) { 
-                if (e.name !== 'AbortError') {
-                    alert("通信エラーが発生しました。");
+                console.error('送信エラー:', e);
+                
+                // LocalStorageに未送信記録として保存
+                const pending = JSON.parse(localStorage.getItem('pendingRecords') || '[]');
+                pending.push({
+                    ...data,
+                    timestamp: new Date().toISOString(),
+                    emoji: emoji
+                });
+                localStorage.setItem('pendingRecords', JSON.stringify(pending));
+                
+                // ユーザーに通知
+                const retry = confirm("通信エラーが発生しました。\n記録は保存されました。次回起動時に再送信します。\n\n今すぐ再試行しますか？");
+                
+                if (retry) {
                     allBtns.forEach(b => b.style.pointerEvents = 'auto');
-                    indicator.innerText = "エラー：再試行してください";
+                    indicator.innerText = "再試行してください";
+                } else {
+                    liff.closeWindow();
                 }
             }
         }
+        initTheme();
         initLiff();
     </script>
 </body>
