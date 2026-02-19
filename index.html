@@ -3,567 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>集中ログ - 武内AI 最強安定版</title>
+    <title>集中ログ - 武内AI</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        :root {
-            --bg-primary: #f4f7f6;
-            --bg-secondary: white;
-            --bg-accent: #fff3cd;
-            --text-primary: #333;
-            --text-secondary: #666;
-            --text-accent: #00b900;
-            --border-color: #ddd;
-            --shadow-color: rgba(0,0,0,0.05);
-            --btn-bg: #f9f9f9;
-        }
-        
-        [data-theme="dark"] {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
-            --bg-accent: #3d3d1a;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a0a0a0;
-            --text-accent: #00ff00;
-            --border-color: #444;
-            --shadow-color: rgba(0,0,0,0.3);
-            --btn-bg: #3a3a3a;
-        }
-        
-        body { 
-            font-family: sans-serif; 
-            text-align: center; 
-            padding: 20px; 
-            background: var(--bg-primary); 
-            color: var(--text-primary);
-            transition: background 0.3s, color 0.3s;
-        }
-        h2 { margin-bottom: 5px; color: var(--text-accent); }
-        #user-name { font-size: 0.8rem; margin-bottom: 10px; color: var(--text-secondary); }
-        #theme-toggle { 
-            position: absolute; 
-            top: 15px; 
-            right: 15px; 
-            background: var(--bg-secondary); 
-            border: 2px solid var(--border-color); 
-            border-radius: 50%; 
-            width: 40px; 
-            height: 40px; 
-            cursor: pointer; 
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s;
-        }
-        #theme-toggle:hover { transform: scale(1.1); }
-        #exam-countdown-area { 
-            display:none; 
-            background: var(--bg-accent); 
-            padding: 12px; 
-            border-radius: 12px; 
-            margin-bottom: 15px; 
-            border: 1px solid var(--border-color);
-        }
-        #days-left { font-size: 1.8rem; color: #d9534f; font-weight: bold; }
-        #history-area { 
-            background: var(--bg-secondary); 
-            padding: 12px; 
-            border-radius: 12px; 
-            box-shadow: 0 2px 4px var(--shadow-color); 
-            margin-bottom: 15px; 
-        }
-        #total-time { font-size: 1.6rem; font-weight: bold; color: var(--text-accent); }
-        .timer { font-size: 3.5rem; font-weight: bold; margin: 15px 0; font-family: monospace; }
-        .subjects { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
-        .subject-btn { 
-            padding: 8px 5px; 
-            border: 2px solid var(--border-color); 
-            border-radius: 10px; 
-            background: var(--bg-secondary); 
-            color: var(--text-primary);
-            font-size: 0.7rem; 
-            height: 65px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            line-height: 1.2;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-        .subject-btn:hover { transform: scale(1.05); }
-        .subject-btn.active { background: #00b900; color: white; border-color: #00b900; font-weight: bold; }
-        
-        /* 科目別カラー */
-        .subject-btn[data-subject*="国語"] { border-color: #ff6b9d; }
-        .subject-btn[data-subject*="言語文化"] { border-color: #ff8fa3; }
-        .subject-btn[data-subject*="数学"] { border-color: #4a90e2; }
-        .subject-btn[data-subject*="論理表現"] { border-color: #6bcf7f; }
-        .subject-btn[data-subject*="EC"] { border-color: #52c78a; }
-        .subject-btn[data-subject*="物理"] { border-color: #9b59b6; }
-        .subject-btn[data-subject*="化学"] { border-color: #e67e22; }
-        .subject-btn[data-subject*="生物"] { border-color: #27ae60; }
-        .subject-btn[data-subject*="歴史"] { border-color: #d4990d; }
-        .subject-btn[data-subject*="芸術"] { border-color: #e91e63; }
-        .subject-btn[data-subject*="保健"] { border-color: #00bcd4; }
-        .subject-btn[data-subject*="情報"] { border-color: #607d8b; }
-        
-        .subject-icon { font-size: 1.2rem; margin-bottom: 2px; }
-        .target-score { font-size: 0.6rem; color: #ff4b4b; margin-top: 4px; font-weight: bold; }
-        .subject-btn.active .target-score { color: #fff; }
-        #main-btn { width: 100%; padding: 18px; font-size: 1.3rem; border: none; border-radius: 50px; color: white; background: #00b900; font-weight: bold; }
-        #main-btn.stop { background: #ff4b4b; }
-        #feedback-area { 
-            background: var(--bg-secondary); 
-            padding: 20px; 
-            border-radius: 20px; 
-            display:none; 
-            box-shadow: 0 4px 15px var(--shadow-color);
-        }
-        #exam-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; overflow-y: auto; }
-        .modal-content { 
-            background: var(--bg-secondary); 
-            margin:5% 5%; 
-            padding:20px; 
-            border-radius:20px; 
-            text-align:left;
-        }
-        .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
-        .score-grid div { 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            background: var(--btn-bg); 
-            padding: 8px; 
-            border-radius: 8px; 
-            font-size: 0.8rem; 
-        }
-        .score-grid input { 
-            width: 45px; 
-            padding: 5px; 
-            text-align: center; 
-            border: 1px solid var(--border-color); 
-            border-radius: 5px;
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-        #status-indicator { color: var(--text-accent); font-weight: bold; margin-top: 10px; }
-        #goal-setting { margin-bottom:15px; }
-        #goal-input {
-            width:50px; 
-            text-align:center;
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; }
+        .timer { font-size: 3.5rem; font-weight: bold; margin: 20px 0; }
+        .subjects { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .subject-btn { padding: 10px; border: 1px solid #ddd; border-radius: 10px; background: white; font-size: 0.8rem; }
+        .subject-btn.active { background: #00b900; color: white; }
+        #main-btn { width: 100%; padding: 15px; font-size: 1.2rem; border-radius: 30px; border: none; background: #00b900; color: white; font-weight: bold; }
     </style>
 </head>
 <body>
-    <button id="theme-toggle" onclick="toggleTheme()" title="ダークモード切り替え">🌙</button>
     <h2>学習記録</h2>
-    <div id="user-name">読み込み中...</div>
-
-    <div id="exam-countdown-area">
-        <span style="font-weight:bold;">学年末考査</span> まで あと <span id="days-left">--</span> 日
-        <div id="exam-msg" style="font-size:0.75rem; color:#666; margin-top:5px;"></div>
-    </div>
-
-    <div id="history-area">
-        <div style="font-size: 0.7rem;">累計学習時間</div>
-        <div><span id="total-time">0</span> 分</div>
-    </div>
-
-    <button onclick="openExamModal()" style="font-size: 0.75rem; margin-bottom: 15px; color: #00b900; background: none; border: none; text-decoration: underline;">目標点数を入力する</button>
-
+    <div id="user-name" style="font-size:0.8rem; color:#666;"></div>
     <div class="timer" id="timer-display">00:00</div>
 
-    <div id="subject-selector-ui">
-        <div class="subjects">
-            <div class="subject-btn active" data-subject="現代の国語" onclick="selectSubject('現代の国語')">
-                <span class="subject-icon">📖</span>現代の国語<span class="target-score" id="target-現代の国語"></span>
-            </div>
-            <div class="subject-btn" data-subject="言語文化" onclick="selectSubject('言語文化')">
-                <span class="subject-icon">🌸</span>言語文化<span class="target-score" id="target-言語文化"></span>
-            </div>
-            <div class="subject-btn" data-subject="数学Ⅰ" onclick="selectSubject('数学Ⅰ')">
-                <span class="subject-icon">📊</span>数学Ⅰ<span class="target-score" id="target-数学Ⅰ"></span>
-            </div>
-            <div class="subject-btn" data-subject="数学A" onclick="selectSubject('数学A')">
-                <span class="subject-icon">🔢</span>数学A<span class="target-score" id="target-数学A"></span>
-            </div>
-            <div class="subject-btn" data-subject="論理表現Ⅰ" onclick="selectSubject('論理表現Ⅰ')">
-                <span class="subject-icon">💬</span>論理表現Ⅰ<span class="target-score" id="target-論理表現Ⅰ"></span>
-            </div>
-            <div class="subject-btn" data-subject="ECⅠ" onclick="selectSubject('ECⅠ')">
-                <span class="subject-icon">🌎</span>ECⅠ<span class="target-score" id="target-ECⅠ"></span>
-            </div>
-            <div class="subject-btn" data-subject="物理基礎" onclick="selectSubject('物理基礎')">
-                <span class="subject-icon">⚛️</span>物理基礎<span class="target-score" id="target-物理基礎"></span>
-            </div>
-            <div class="subject-btn" data-subject="化学基礎" onclick="selectSubject('化学基礎')">
-                <span class="subject-icon">🧪</span>化学基礎<span class="target-score" id="target-化学基礎"></span>
-            </div>
-            <div class="subject-btn" data-subject="生物基礎" onclick="selectSubject('生物基礎')">
-                <span class="subject-icon">🌱</span>生物基礎<span class="target-score" id="target-生物基礎"></span>
-            </div>
-            <div class="subject-btn" data-subject="歴史総合" onclick="selectSubject('歴史総合')">
-                <span class="subject-icon">🏛️</span>歴史総合<span class="target-score" id="target-歴史総合"></span>
-            </div>
-            <div class="subject-btn" data-subject="芸術" onclick="selectSubject('芸術')">
-                <span class="subject-icon">🎨</span>芸術<span class="target-score" id="target-芸術"></span>
-            </div>
-            <div class="subject-btn" data-subject="保健" onclick="selectSubject('保健')">
-                <span class="subject-icon">💚</span>保健<span class="target-score" id="target-保健"></span>
-            </div>
-            <div class="subject-btn" data-subject="サイエンス情報Ⅰ" onclick="selectSubject('サイエンス情報Ⅰ')">
-                <span class="subject-icon">💻</span>サイエンス情報Ⅰ<span class="target-score" id="target-サイエンス情報Ⅰ"></span>
-            </div>
+    <div class="subjects" id="subject-list">
+        <div class="subject-btn active" onclick="selectSubject('現代の国語')">現代の国語</div>
+        <div class="subject-btn" onclick="selectSubject('数学Ⅰ')">数学Ⅰ</div>
+        <div class="subject-btn" onclick="selectSubject('英語')">英語</div>
         </div>
-    </div>
-
-    <div id="goal-setting" style="margin-bottom:15px;">
-        <span style="font-size: 0.8rem;">今回の目標(分): </span>
-        <input type="number" id="goal-input" value="0" min="0" style="width:50px; text-align:center;">
-    </div>
-
-    <div id="feedback-area">
-        <p style="font-weight: bold;">集中できた？</p>
-        <div class="subjects">
-            <div class="subject-btn" onclick="finishWithScore('🤩', 3)">🤩 完璧</div>
-            <div class="subject-btn" onclick="finishWithScore('😐', 2)">😐 普通</div>
-            <div class="subject-btn" onclick="finishWithScore('😴', 1)">😴 眠い</div>
-        </div>
-        <div id="status-indicator"></div>
-    </div>
 
     <button id="main-btn" onclick="toggleTimer()">START</button>
 
-    <div id="exam-modal">
-        <div class="modal-content">
-            <h3 style="margin-top:0; color:#00b900;">学年末考査 目標設定</h3>
-            <div class="score-grid">
-                <div><span>現国</span><input type="number" class="score-in" data-sub="現代の国語"></div>
-                <div><span>言文</span><input type="number" class="score-in" data-sub="言語文化"></div>
-                <div><span>数Ⅰ</span><input type="number" class="score-in" data-sub="数学Ⅰ"></div>
-                <div><span>数A</span><input type="number" class="score-in" data-sub="数学A"></div>
-                <div><span>論理</span><input type="number" class="score-in" data-sub="論理表現Ⅰ"></div>
-                <div><span>ECⅠ</span><input type="number" class="score-in" data-sub="ECⅠ"></div>
-                <div><span>物理</span><input type="number" class="score-in" data-sub="物理基礎"></div>
-                <div><span>化学</span><input type="number" class="score-in" data-sub="化学基礎"></div>
-                <div><span>生物</span><input type="number" class="score-in" data-sub="生物基礎"></div>
-                <div><span>歴史</span><input type="number" class="score-in" data-sub="歴史総合"></div>
-                <div><span>芸術</span><input type="number" class="score-in" data-sub="芸術"></div>
-                <div><span>保健</span><input type="number" class="score-in" data-sub="保健"></div>
-                <div style="grid-column: span 2;"><span>サイエンス情報Ⅰ</span><input type="number" class="score-in" data-sub="サイエンス情報Ⅰ"></div>
-            </div>
-            <textarea id="exam-msg-input" rows="2" placeholder="意気込みを入力！" style="width:100%; border-radius:8px; border:1px solid #ddd;"></textarea>
-            <button onclick="saveExamGoal()" style="width:100%; padding:15px; background:#00b900; color:white; border:none; border-radius:12px; font-weight:bold; margin-top:10px;">目標を確定する</button>
-            <button onclick="closeExamModal()" style="width:100%; margin-top:10px; background:none; border:none; color:#999;">戻る</button>
-        </div>
-    </div>
-
     <script>
-        let startTime, timerInterval, goalSeconds;
-        let isRunning = false, isCountdown = false, finalDuration = 0;
-        let selectedSubject = '現代の国語', displayName = "Unknown";
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbx0lGxxv5qfnCe0zTuoqYSE-Pat2dY8Bne8O_1SQ1Neie6kVoTqHoBXBuorVg1ZakM/exec";
-
-        // ダークモード切り替え
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            document.getElementById('theme-toggle').innerText = newTheme === 'dark' ? '☀️' : '🌙';
-            localStorage.setItem('theme', newTheme);
-        }
-
-        // テーマの初期化
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            document.getElementById('theme-toggle').innerText = savedTheme === 'dark' ? '☀️' : '🌙';
-        }
+        let startTime, timerInterval, isRunning = false, selectedSubject = '現代の国語', displayName = "User";
+        const GAS_URL = "ここにあなたのGAS_URLを貼ってください";
 
         async function initLiff() {
-            try {
-                await liff.init({ liffId: "2009056355-TruGatly" }); 
-                if (!liff.isLoggedIn()) { liff.login(); } 
-                else {
-                    const profile = await liff.getProfile();
-                    displayName = profile.displayName; 
-                    document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
-                    await loadHistory();
-                    await loadExamCountdown();
-                    checkResumeTimer();
-                    await checkPendingRecords(); // 未送信記録のチェック
-                }
-            } catch (err) { console.error(err); }
+            await liff.init({ liffId: "2009056355-TruGatly" });
+            if (!liff.isLoggedIn()) { liff.login(); }
+            const profile = await liff.getProfile();
+            displayName = profile.displayName;
+            document.getElementById('user-name').innerText = `こんにちは、${displayName}さん`;
         }
 
-        // 未送信記録のチェックと再送
-        async function checkPendingRecords() {
-            const pending = localStorage.getItem('pendingRecords');
-            if (!pending) return;
-
-            const records = JSON.parse(pending);
-            if (records.length === 0) return;
-
-            const confirm = window.confirm(`未送信の学習記録が${records.length}件あります。\n送信しますか？`);
-            if (!confirm) return;
-
-            const indicator = document.getElementById('user-name');
-            const originalText = indicator.innerText;
-            indicator.innerText = '未送信記録を送信中...';
-
-            let successCount = 0;
-            const failedRecords = [];
-
-            for (const record of records) {
-                try {
-                    const r = await fetch(GAS_URL, { 
-                        method: 'POST', 
-                        body: JSON.stringify(record),
-                        signal: AbortSignal.timeout(10000)
-                    });
-                    const res = await r.json();
-                    if (res.status === 'success') {
-                        successCount++;
-                    } else {
-                        failedRecords.push(record);
-                    }
-                } catch (e) {
-                    console.error('再送失敗:', e);
-                    failedRecords.push(record);
-                }
-            }
-
-            // 失敗した記録のみ保持
-            if (failedRecords.length > 0) {
-                localStorage.setItem('pendingRecords', JSON.stringify(failedRecords));
-                alert(`${successCount}件送信完了。${failedRecords.length}件は再送失敗しました。`);
-            } else {
-                localStorage.removeItem('pendingRecords');
-                alert(`${successCount}件すべて送信完了しました！`);
-            }
-
-            indicator.innerText = originalText;
-            await loadHistory(); // 履歴を更新
-        }
-
-        function checkResumeTimer() {
-            const savedStart = localStorage.getItem('study_startTime');
-            if (savedStart) {
-                startTime = parseInt(savedStart);
-                const savedGoal = localStorage.getItem('study_goalMin');
-                const savedSub = localStorage.getItem('study_subject');
-                if (savedSub) selectSubject(savedSub);
-                document.getElementById('goal-input').value = savedGoal || 0;
-                isCountdown = (parseInt(savedGoal) || 0) > 0;
-                goalSeconds = (parseInt(savedGoal) || 0) * 60;
-                isRunning = true;
-                timerInterval = setInterval(updateTimer, 1000);
-                const btn = document.getElementById('main-btn');
-                btn.innerText = 'STOP'; btn.classList.add('stop');
-                document.getElementById('goal-setting').style.display = 'none';
-            }
-        }
-
-        async function loadHistory() {
-            try {
-                const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getHistory', userName: displayName }) });
-                const res = await r.json();
-                if (res.status === "success") {
-                    document.getElementById('total-time').innerText = res.totalMinutes;
-                    if (res.scores) {
-                        for (let sub in res.scores) {
-                            const el = document.getElementById('target-' + sub);
-                            if (el && res.scores[sub]) el.innerText = res.scores[sub] + "点目標";
-                        }
-                    }
-                }
-            } catch(e) { console.error(e); }
-        }
-
-        async function loadExamCountdown() {
-            try {
-                const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getLatestExam', userName: displayName }) });
-                const res = await r.json();
-                const testDate = new Date("2026-03-02T00:00:00");
-                const diffDays = Math.ceil((testDate - new Date().setHours(0,0,0,0)) / (86400000));
-                if (diffDays >= 0) {
-                    document.getElementById('exam-countdown-area').style.display = 'block';
-                    document.getElementById('days-left').innerText = diffDays;
-                    if (res.status === "success" && res.goal) document.getElementById('exam-msg').innerText = "「" + res.goal.message + "」";
-                }
-            } catch(e) { console.error(e); }
-        }
-
-        function openExamModal() { document.getElementById('exam-modal').style.display = 'block'; }
-        function closeExamModal() { document.getElementById('exam-modal').style.display = 'none'; }
-
-        async function saveExamGoal() {
-            const scores = {};
-            document.querySelectorAll('.score-in').forEach(el => { scores[el.dataset.sub] = el.value || 0; });
-            const msg = document.getElementById('exam-msg-input').value;
-            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'saveExamGoal', userName: displayName, scores: scores, message: msg }) });
-            alert("目標設定完了！"); closeExamModal(); loadHistory(); loadExamCountdown();
-        }
-
-        function selectSubject(s) { 
-            if (!isRunning) { 
-                selectedSubject = s; 
-                document.querySelectorAll('.subject-btn').forEach(b => {
-                    const isActive = b.getAttribute('data-subject') === s;
-                    b.classList.toggle('active', isActive);
-                });
-            } 
-        }
+        function selectSubject(s) { if(!isRunning) { selectedSubject = s; document.querySelectorAll('.subject-btn').forEach(b => b.classList.toggle('active', b.innerText === s)); } }
 
         function toggleTimer() {
             const btn = document.getElementById('main-btn');
             if (!isRunning) {
-                const gMin = parseInt(document.getElementById('goal-input').value) || 0;
-                isCountdown = gMin > 0; goalSeconds = gMin * 60;
-                startTime = Date.now(); 
-                localStorage.setItem('study_startTime', startTime);
-                localStorage.setItem('study_goalMin', gMin);
-                localStorage.setItem('study_subject', selectedSubject);
-                timerInterval = setInterval(updateTimer, 1000);
-                btn.innerText = 'STOP'; btn.classList.add('stop'); isRunning = true;
-                document.getElementById('goal-setting').style.display = 'none';
-            } else { stopTimer(); }
+                startTime = Date.now();
+                timerInterval = setInterval(() => {
+                    const sec = Math.floor((Date.now() - startTime) / 1000);
+                    document.getElementById('timer-display').innerText = `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
+                }, 1000);
+                btn.innerText = 'STOP'; btn.style.background = '#ff4b4b'; isRunning = true;
+            } else {
+                finishWithScore();
+            }
         }
 
-        function updateTimer() {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            let dSec = isCountdown ? Math.max(0, goalSeconds - elapsed) : elapsed;
-            document.getElementById('timer-display').innerText = `${String(Math.floor(dSec / 60)).padStart(2, '0')}:${String(dSec % 60).padStart(2, '0')}`;
-            if (isCountdown && dSec === 0) stopTimer();
-        }
-
-        function stopTimer() {
+        async function finishWithScore() {
             clearInterval(timerInterval);
-            const actual = Math.floor((Date.now() - startTime) / 1000);
-            finalDuration = isCountdown ? Math.min(actual, goalSeconds) : actual;
-            
-            // 達成感アニメーション（紙吹雪）
-            celebrateCompletion(finalDuration);
-            
-            document.getElementById('main-btn').style.display = 'none';
-            document.getElementById('subject-selector-ui').style.display = 'none';
-            document.getElementById('feedback-area').style.display = 'block';
-            isRunning = false;
-        }
+            const duration = Math.floor((Date.now() - startTime) / 1000);
+            const min = Math.ceil(duration / 60);
 
-        // 達成感演出
-        function celebrateCompletion(duration) {
-            const minutes = Math.ceil(duration / 60);
-            
-            // 5分未満は控えめ
-            if (minutes < 5) return;
-            
-            // 基本の紙吹雪
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 }
-            });
-            
-            // 10分以上でさらに派手に
-            if (minutes >= 10) {
-                setTimeout(() => {
-                    confetti({
-                        particleCount: 50,
-                        angle: 60,
-                        spread: 55,
-                        origin: { x: 0 }
-                    });
-                    confetti({
-                        particleCount: 50,
-                        angle: 120,
-                        spread: 55,
-                        origin: { x: 1 }
-                    });
-                }, 200);
-            }
-            
-            // 30分以上で連続花火
-            if (minutes >= 30) {
-                let count = 0;
-                const interval = setInterval(() => {
-                    confetti({
-                        particleCount: 30,
-                        startVelocity: 30,
-                        spread: 360,
-                        origin: {
-                            x: Math.random(),
-                            y: Math.random() - 0.2
-                        }
-                    });
-                    count++;
-                    if (count >= 3) clearInterval(interval);
-                }, 300);
-            }
-        }
+            if (min < 5) { alert("5分以上頑張ろう！"); location.reload(); return; }
 
-        async function finishWithScore(emoji, score) {
-            const min = Math.max(1, Math.ceil(finalDuration / 60));
-            if (min < 5) { alert("5分以上の学習のみ記録できます。あと少し頑張ろう！🔥"); location.reload(); return; }
+            document.getElementById('main-btn').innerText = "保存中...";
+            document.getElementById('main-btn').disabled = true;
 
-            // UIのロック
-            const allBtns = document.querySelectorAll('button, .subject-btn');
-            allBtns.forEach(b => b.style.pointerEvents = 'none');
-            const indicator = document.getElementById('status-indicator');
-            indicator.innerText = "武内AIに送信中...🚀";
-
-            const data = { userName: displayName, subject: selectedSubject, duration: finalDuration, score: score, goalMin: parseInt(document.getElementById('goal-input').value) || 0 };
-            
             try {
                 const r = await fetch(GAS_URL, { 
                     method: 'POST', 
-                    body: JSON.stringify(data),
-                    signal: AbortSignal.timeout(10000) // 10秒タイムアウト
+                    body: JSON.stringify({ action: 'saveRecord', userName: displayName, subject: selectedSubject, duration: duration }) 
                 });
                 const res = await r.json();
-                
-                if (res.status === 'success') {
-                    localStorage.removeItem('study_startTime');
-                    localStorage.removeItem('study_goalMin');
-                    localStorage.removeItem('study_subject');
-                    
-                    if (liff.isInClient()) {
-                        await liff.sendMessages([{ 'type': 'text', 'text': `【学年末考査へ前進！】\n${selectedSubject}：${min}分\n\n武内AIからのコメント：\n${res.aiMsg || "ナイス集中！"}` }]);
-                    }
-                    liff.closeWindow();
-                } else {
-                    throw new Error('送信失敗');
+
+                if (liff.isInClient()) {
+                    // ここでAIコメントとランキングを一緒に送る
+                    await liff.sendMessages([{
+                        type: 'text',
+                        text: `【学習完了報告】\n${selectedSubject}：${min}分\n\n武内AI：${res.aiMsg}${res.rankingMsg}`
+                    }]);
                 }
-            } catch (e) { 
-                console.error('送信エラー:', e);
-                
-                // LocalStorageに未送信記録として保存
-                const pending = JSON.parse(localStorage.getItem('pendingRecords') || '[]');
-                pending.push({
-                    ...data,
-                    timestamp: new Date().toISOString(),
-                    emoji: emoji
-                });
-                localStorage.setItem('pendingRecords', JSON.stringify(pending));
-                
-                // ユーザーに通知
-                const retry = confirm("通信エラーが発生しました。\n記録は保存されました。次回起動時に再送信します。\n\n今すぐ再試行しますか？");
-                
-                if (retry) {
-                    allBtns.forEach(b => b.style.pointerEvents = 'auto');
-                    indicator.innerText = "再試行してください";
-                } else {
-                    liff.closeWindow();
-                }
-            }
+                liff.closeWindow();
+            } catch (e) { alert("エラーが発生しました。"); }
         }
-        initTheme();
         initLiff();
     </script>
 </body>
